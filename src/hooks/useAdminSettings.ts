@@ -28,6 +28,7 @@ export interface AppSettings {
   
   // API
   apiBaseUrl: string;
+  autoFillApiKey: boolean; // Auto-fill user's API key in code examples
 }
 
 // Default admin ID - first user to access
@@ -48,6 +49,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   maintenanceMode: false,
   adminTelegramIds: [INITIAL_ADMIN_ID],
   apiBaseUrl: "https://api.example.com/v1",
+  autoFillApiKey: true,
 };
 
 export function useAdminSettings() {

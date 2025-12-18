@@ -239,6 +239,17 @@ export default function AdminSettings() {
             className="bg-background border-white/10 font-mono text-sm"
           />
         </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Auto-fill API Key</Label>
+            <p className="text-xs text-muted-foreground">Automatically add user's API key in code examples</p>
+          </div>
+          <Switch
+            checked={settings.autoFillApiKey}
+            onCheckedChange={(checked) => updateSetting("autoFillApiKey", checked)}
+          />
+        </div>
       </div>
 
       {/* Feature Toggles */}
