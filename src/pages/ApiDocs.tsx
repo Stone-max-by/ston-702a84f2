@@ -4,9 +4,9 @@ import { ApiEndpointModal } from "@/components/api/ApiEndpointModal";
 import { ApiPricingModal } from "@/components/api/ApiPricingModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronRight, ArrowLeft, Globe, CreditCard, Zap, Activity, Clock, CheckCircle, TrendingUp } from "lucide-react";
+import { Search, ChevronRight, ArrowLeft, Globe, CreditCard, Zap, Activity, Clock, CheckCircle, TrendingUp, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { apiProviders } from "@/data/mockApis";
+import { useFirestoreApis } from "@/hooks/useFirestoreApis";
 import { ApiEndpoint, ApiProvider } from "@/types/api";
 import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -31,11 +31,14 @@ export default function ApiDocs() {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const { remainingRequests } = useUserApiCredits();
   const { requireAuth } = useRequireAuth();
+  const { providers: apiProviders, loading } = useFirestoreApis();
 
   const totalApis = apiProviders.length;
   const totalEndpoints = apiProviders.reduce((sum, p) => sum + p.totalEndpoints, 0);
   const totalRequests = apiProviders.reduce((sum, p) => sum + p.totalRequests, 0);
-  const avgSuccessRate = apiProviders.reduce((sum, p) => sum + p.successRate, 0) / apiProviders.length;
+  const avgSuccessRate = apiProviders.length > 0 
+    ? apiProviders.reduce((sum, p) => sum + p.successRate, 0) / apiProviders.length 
+    : 0;
 
   const filteredProviders = apiProviders.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -186,43 +189,47 @@ export default function ApiDocs() {
         {/* Provider List */}
         {!selectedProvider && (
           <div className="space-y-3">
-            {filteredProviders.map((provider) => (
-              <button
-                key={provider.id}
-                onClick={() => {
-                  setSelectedProvider(provider);
-                  setSearch("");
-                }}
-                className="w-full bg-card rounded-xl border border-white/5 p-4 hover:bg-white/5 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${provider.color} flex items-center justify-center text-2xl`}>
-                    {provider.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{provider.name}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{provider.description}</p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-[10px] text-muted-foreground">{provider.totalEndpoints} endpoints</span>
-                      <span className="text-[10px] text-success flex items-center gap-1">
-                        <CheckCircle className="w-2.5 h-2.5" />
-                        {provider.successRate}%
-                      </span>
-                      <span className="text-[10px] text-cyan-400 flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5" />
-                        {provider.avgResponseTime}ms
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                </div>
-              </button>
-            ))}
-
-            {filteredProviders.length === 0 && (
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : filteredProviders.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No APIs found</p>
               </div>
+            ) : (
+              filteredProviders.map((provider) => (
+                <button
+                  key={provider.id}
+                  onClick={() => {
+                    setSelectedProvider(provider);
+                    setSearch("");
+                  }}
+                  className="w-full bg-card rounded-xl border border-white/5 p-4 hover:bg-white/5 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${provider.color} flex items-center justify-center text-2xl`}>
+                      {provider.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{provider.name}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{provider.description}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-[10px] text-muted-foreground">{provider.totalEndpoints} endpoints</span>
+                        <span className="text-[10px] text-success flex items-center gap-1">
+                          <CheckCircle className="w-2.5 h-2.5" />
+                          {provider.successRate}%
+                        </span>
+                        <span className="text-[10px] text-cyan-400 flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" />
+                          {provider.avgResponseTime}ms
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                  </div>
+                </button>
+              ))
             )}
           </div>
         )}
