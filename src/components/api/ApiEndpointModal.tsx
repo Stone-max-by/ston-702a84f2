@@ -1,14 +1,12 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Copy, Check, Zap, Key, Coins, Loader2, Eye, EyeOff } from "lucide-react";
+import { Copy, Check, Zap, Coins } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ApiEndpoint } from "@/types/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { toast } from "sonner";
 
 interface ApiEndpointModalProps {
   endpoint: ApiEndpoint | null;
@@ -26,35 +24,72 @@ const methodColors: Record<string, string> = {
 
 export function ApiEndpointModal({ endpoint, baseUrl, open, onClose }: ApiEndpointModalProps) {
   const [copied, setCopied] = useState<string | null>(null);
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [loadingKey, setLoadingKey] = useState(false);
-  const [showKeyValue, setShowKeyValue] = useState(false);
+  const [userApiKey, setUserApiKey] = useState<string | null>(null);
+  const [autoFillEnabled, setAutoFillEnabled] = useState(true);
   const { user } = useAuth();
 
-  // Reset state when modal closes
+  // Fetch user's API key and settings when modal opens
   useEffect(() => {
     if (!open) {
-      setShowApiKey(false);
-      setApiKey(null);
-      setShowKeyValue(false);
+      setUserApiKey(null);
+      return;
     }
-  }, [open]);
+
+    const fetchData = async () => {
+      // Fetch auto-fill setting
+      try {
+        const settingsRef = doc(db, "config", "settings");
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists()) {
+          const settings = settingsSnap.data();
+          setAutoFillEnabled(settings.autoFillApiKey !== false);
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      }
+
+      // Fetch user's API key if logged in
+      if (user) {
+        try {
+          const apiKeysRef = collection(db, "apiKeys");
+          const q = query(
+            apiKeysRef,
+            where("userId", "==", user.id),
+            where("isActive", "==", true),
+            limit(1)
+          );
+          const snapshot = await getDocs(q);
+
+          if (!snapshot.empty) {
+            const keyData = snapshot.docs[0].data();
+            setUserApiKey(keyData.apiKey || keyData.key || null);
+          }
+        } catch (error) {
+          console.error("Error fetching API key:", error);
+        }
+      }
+    };
+
+    fetchData();
+  }, [open, user]);
 
   if (!endpoint) return null;
 
   const fullUrl = `${baseUrl}${endpoint.path}`;
   const creditsCost = endpoint.creditsCost || 1;
 
+  // Use actual API key if available and auto-fill is enabled
+  const displayApiKey = (autoFillEnabled && userApiKey) ? userApiKey : "YOUR_API_KEY";
+
   const curlExample = `curl -X ${endpoint.method} "${fullUrl}"${
-    endpoint.requiresAuth ? ' \\\n  -H "Authorization: Bearer YOUR_API_KEY"' : ""
+    endpoint.requiresAuth ? ` \\\n  -H "Authorization: Bearer ${displayApiKey}"` : ""
   }`;
 
   const jsExample = `const response = await fetch("${fullUrl}", {
   method: "${endpoint.method}",${
     endpoint.requiresAuth
       ? `\n  headers: {
-    "Authorization": "Bearer YOUR_API_KEY"
+    "Authorization": "Bearer ${displayApiKey}"
   }`
       : ""
   }
@@ -67,45 +102,6 @@ console.log(data);`;
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
-  };
-
-  const handleGetApiKey = async () => {
-    if (!user) {
-      toast.error("Please login first to get your API key");
-      return;
-    }
-
-    setLoadingKey(true);
-    try {
-      // Fetch user's API key from Firestore
-      const apiKeysRef = collection(db, "apiKeys");
-      const q = query(
-        apiKeysRef, 
-        where("userId", "==", user.id),
-        where("isActive", "==", true),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
-        toast.error("No API key found. Please create one in your profile.");
-        setApiKey(null);
-      } else {
-        const keyData = snapshot.docs[0].data();
-        setApiKey(keyData.apiKey || keyData.key || `${keyData.keyPrefix}...`);
-        setShowApiKey(true);
-      }
-    } catch (error) {
-      console.error("Error fetching API key:", error);
-      toast.error("Failed to fetch API key");
-    } finally {
-      setLoadingKey(false);
-    }
-  };
-
-  const maskApiKey = (key: string) => {
-    if (key.length <= 8) return key;
-    return key.substring(0, 8) + "•".repeat(Math.min(key.length - 8, 20));
   };
 
   return (
@@ -146,70 +142,18 @@ console.log(data);`;
               </div>
             </div>
 
-            {/* Get API Key Section */}
-            {endpoint.requiresAuth && (
-              <div className="bg-background rounded-lg p-3 border border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Key className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-medium text-foreground">Your API Key</span>
-                  </div>
-                  {!showApiKey ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleGetApiKey}
-                      disabled={loadingKey}
-                      className="h-7 text-[10px] px-2"
-                    >
-                      {loadingKey ? (
-                        <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                      ) : (
-                        <Key className="w-3 h-3 mr-1" />
-                      )}
-                      Get API Key
-                    </Button>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setShowKeyValue(!showKeyValue)}
-                        className="p-1.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
-                      >
-                        {showKeyValue ? (
-                          <EyeOff className="w-3 h-3 text-muted-foreground" />
-                        ) : (
-                          <Eye className="w-3 h-3 text-muted-foreground" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (apiKey) {
-                            copyToClipboard(apiKey, "apikey");
-                            toast.success("API Key copied!");
-                          }
-                        }}
-                        className="p-1.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
-                      >
-                        {copied === "apikey" ? (
-                          <Check className="w-3 h-3 text-success" />
-                        ) : (
-                          <Copy className="w-3 h-3 text-muted-foreground" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {showApiKey && apiKey && (
-                  <div className="bg-card rounded px-2 py-1.5 border border-white/5">
-                    <code className="text-[10px] font-mono text-foreground break-all">
-                      {showKeyValue ? apiKey : maskApiKey(apiKey)}
-                    </code>
-                  </div>
-                )}
-                {showApiKey && !apiKey && (
-                  <p className="text-[10px] text-muted-foreground">
-                    No active API key found. Create one in your profile.
-                  </p>
+            {/* API Key Status - small indicator */}
+            {endpoint.requiresAuth && autoFillEnabled && (
+              <div className="flex items-center gap-2">
+                {userApiKey ? (
+                  <span className="text-[10px] text-success flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    Your API key is auto-filled in examples
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">
+                    Login to auto-fill your API key
+                  </span>
                 )}
               </div>
             )}
