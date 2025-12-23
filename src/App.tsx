@@ -14,6 +14,7 @@ import Deposit from "./pages/Deposit";
 import Transactions from "./pages/Transactions";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ProductDetail from "./pages/ProductDetail";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
@@ -34,6 +35,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/product/:slug" element={<ProductDetail />} />
               <Route path="/coins" element={<Coins />} />
               <Route path="/stats" element={<Stats />} />
               <Route path="/profile" element={<Profile />} />
