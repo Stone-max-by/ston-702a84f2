@@ -1,4 +1,5 @@
 import { Download, Folder } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { Game } from "@/data/mockGames";
 import type { Product } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -12,6 +13,7 @@ interface GameCardListProps {
 }
 
 export function GameCardList({ game, onClick }: GameCardListProps) {
+  const navigate = useNavigate();
   const { requireAuth } = useRequireAuth();
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -23,9 +25,18 @@ export function GameCardList({ game, onClick }: GameCardListProps) {
   const size = 'sizeFormatted' in game ? game.sizeFormatted : '';
   const downloads = 'downloads' in game ? game.downloads : 0;
 
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      const slug = 'slug' in game ? game.slug : game.id;
+      navigate(`/product/${slug}`);
+    }
+  };
+
   return (
     <div
-      onClick={onClick}
+      onClick={handleCardClick}
       className="glass-card p-3 flex gap-3 cursor-pointer animate-fade-in hover:border-primary/30 transition-colors"
     >
       <img
