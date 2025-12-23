@@ -5,7 +5,7 @@ import { Copy, Check, Zap, Coins } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ApiEndpoint } from "@/types/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface ApiEndpointModalProps {
@@ -48,21 +48,17 @@ export function ApiEndpointModal({ endpoint, baseUrl, open, onClose }: ApiEndpoi
         console.error("Error fetching settings:", error);
       }
 
-      // Fetch user's API key if logged in
-      if (user) {
+      // Fetch user's API key from users collection in Firestore
+      if (user?.telegramId) {
         try {
-          const apiKeysRef = collection(db, "apiKeys");
-          const q = query(
-            apiKeysRef,
-            where("userId", "==", user.id),
-            where("isActive", "==", true),
-            limit(1)
-          );
-          const snapshot = await getDocs(q);
+          const userRef = doc(db, "users", String(user.telegramId));
+          const userSnap = await getDoc(userRef);
 
-          if (!snapshot.empty) {
-            const keyData = snapshot.docs[0].data();
-            setUserApiKey(keyData.apiKey || keyData.key || null);
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            if (userData.apiKey?.isActive && userData.apiKey?.key) {
+              setUserApiKey(userData.apiKey.key);
+            }
           }
         } catch (error) {
           console.error("Error fetching API key:", error);
