@@ -1,13 +1,10 @@
-import { Filter, ArrowUpDown, LayoutGrid, List, Sun } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Filter, ArrowUpDown, Sun } from "lucide-react";
 
 interface FilterBarProps {
-  viewMode: "grid" | "list";
-  onViewModeChange: (mode: "grid" | "list") => void;
   gamesCount: number;
 }
 
-export function FilterBar({ viewMode, onViewModeChange, gamesCount }: FilterBarProps) {
+export function FilterBar({ gamesCount }: FilterBarProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -24,18 +21,6 @@ export function FilterBar({ viewMode, onViewModeChange, gamesCount }: FilterBarP
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => onViewModeChange("grid")}
-            className={cn("filter-btn", viewMode === "grid" && "filter-btn-active")}
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onViewModeChange("list")}
-            className={cn("filter-btn", viewMode === "list" && "filter-btn-active")}
-          >
-            <List className="w-4 h-4" />
-          </button>
           <button className="filter-btn">
             <Sun className="w-4 h-4" />
           </button>

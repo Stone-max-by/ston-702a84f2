@@ -4,7 +4,6 @@ import { useProducts } from "@/hooks/useProducts";
 import { Product, ProductType, productTypeLabels, productTypeIcons } from "@/types/product";
 import { Loader2 } from "lucide-react";
 import { GameCardGrid } from "@/components/games/GameCardGrid";
-import { GameCardList } from "@/components/games/GameCardList";
 import { SearchBar } from "@/components/games/SearchBar";
 import { FilterBar } from "@/components/games/FilterBar";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ const PRODUCT_TYPES: ProductType[] = [
 export default function Explore() {
   const [selectedCategory, setSelectedCategory] = useState<ProductType | "all">("all");
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products, loading } = useProducts();
@@ -105,11 +103,7 @@ export default function Explore() {
         <SearchBar value={search} onChange={handleSearchChange} />
 
         {/* Filter Bar */}
-        <FilterBar
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          gamesCount={filteredProducts.length}
-        />
+        <FilterBar gamesCount={filteredProducts.length} />
 
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -152,27 +146,15 @@ export default function Explore() {
           </div>
         ) : (
           <>
-            {viewMode === "grid" ? (
-              <div className="grid grid-cols-2 gap-3">
-                {filteredProducts.slice(0, visibleCount).map((product) => (
-                  <GameCardGrid 
-                    key={product.id} 
-                    game={product} 
-                    onClick={() => setSelectedProduct(product)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredProducts.slice(0, visibleCount).map((product) => (
-                  <GameCardList 
-                    key={product.id} 
-                    game={product}
-                    onClick={() => setSelectedProduct(product)}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-3">
+              {filteredProducts.slice(0, visibleCount).map((product) => (
+                <GameCardGrid 
+                  key={product.id} 
+                  game={product} 
+                  onClick={() => setSelectedProduct(product)}
+                />
+              ))}
+            </div>
             
             {/* Load More Button */}
             {visibleCount < filteredProducts.length && (
