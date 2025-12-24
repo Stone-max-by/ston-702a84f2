@@ -28,8 +28,8 @@ export function Header({ title, showBack, onBack }: HeaderProps) {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-header bg-background/95 backdrop-blur-sm border-b border-border/50">
-      <div className="flex items-center justify-between h-full px-3">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div className="flex items-center justify-between h-header px-3">
         <button
           onClick={onBack}
           className="w-8 h-8 flex items-center justify-center text-foreground"
