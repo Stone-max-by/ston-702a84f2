@@ -41,25 +41,25 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
       onClick={handleCardClick}
       className="glass-card overflow-hidden cursor-pointer animate-fade-in hover:border-primary/30 transition-colors"
     >
-      <div className="relative aspect-[3/2]">
+      <div className="relative aspect-[4/3]">
         <img
           src={game.thumbnail}
           alt={game.title}
           className="w-full h-full object-cover"
           loading="lazy"
         />
-        <div className="absolute top-2 left-2">
-          <span className="tag-pill">{uploader}</span>
+        <div className="absolute top-1.5 left-1.5">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-foreground">{uploader}</span>
         </div>
         
         {/* Price badge */}
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-1.5 right-1.5">
           {isFree && !unlockByAds ? (
-            <span className="tag-pill bg-green-600/90 text-white">Free</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-600/90 text-white">Free</span>
           ) : unlockByAds ? (
-            <span className="tag-pill bg-amber-600/90 text-white">Ads</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-600/90 text-white">Ads</span>
           ) : (
-            <span className="tag-pill bg-primary/90 text-primary-foreground">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/90 text-primary-foreground">
               {coinPrice} 🪙
             </span>
           )}
@@ -70,46 +70,34 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
             e.stopPropagation();
             handleCardClick();
           }}
-          className="absolute bottom-3 right-3 w-11 h-11 rounded-lg bg-card/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-card transition-colors"
+          className="absolute bottom-2 right-2 w-8 h-8 rounded-md bg-card/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-card transition-colors"
         >
-          <Download className="w-5 h-5" />
+          <Download className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="p-3 space-y-2">
-        <h3 className="font-semibold text-foreground line-clamp-1">
+      <div className="p-2 space-y-1">
+        <h3 className="font-medium text-xs text-foreground line-clamp-1">
           {game.title}{" "}
           <span className="text-muted-foreground font-normal">({year})</span>
         </h3>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
           {size && (
-            <span className="flex items-center gap-1">
-              <Folder className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-0.5">
+              <Folder className="w-3 h-3" />
               {size}
             </span>
           )}
-          <span className="flex items-center gap-1">
-            <Download className="w-3.5 h-3.5" />
+          <span className="flex items-center gap-0.5">
+            <Download className="w-3 h-3" />
             {downloads}
           </span>
-          {uploadDate && (
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              {uploadDate}
-            </span>
-          )}
-          {filesCount > 0 && (
-            <span className="flex items-center gap-1">
-              <Folder className="w-3.5 h-3.5" />
-              {filesCount} files
-            </span>
-          )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {game.tags?.filter(t => t !== "4GB").map((tag) => (
-            <span key={tag} className="tag-pill">
+        <div className="flex flex-wrap gap-1">
+          {game.tags?.filter(t => t !== "4GB").slice(0, 2).map((tag) => (
+            <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
               {tag}
             </span>
           ))}
