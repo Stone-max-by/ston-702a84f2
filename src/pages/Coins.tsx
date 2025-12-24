@@ -66,7 +66,7 @@ export default function CoinsPage() {
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [converting, setConverting] = useState(false);
   const [coinsToConvert, setCoinsToConvert] = useState(MIN_COINS_TO_CONVERT);
-  const [cooldown, setCooldown] = useState(0);
+  const [networkCooldowns, setNetworkCooldowns] = useState<Record<string, number>>({});
   const [networkAdsWatched, setNetworkAdsWatched] = useState<Record<string, number>>({});
   const [redeemCodeInput, setRedeemCodeInput] = useState("");
   const [copied, setCopied] = useState(false);
@@ -107,13 +107,22 @@ export default function CoinsPage() {
     }
   }, []);
 
-  // Cooldown timer
+  // Cooldown timer for each network
   useEffect(() => {
-    if (cooldown > 0) {
-      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [cooldown]);
+    const activeNetworks = Object.entries(networkCooldowns).filter(([_, time]) => time > 0);
+    if (activeNetworks.length === 0) return;
+    
+    const timer = setTimeout(() => {
+      setNetworkCooldowns(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(key => {
+          if (updated[key] > 0) updated[key] -= 1;
+        });
+        return updated;
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [networkCooldowns]);
 
   const saveAdsWatched = (newData: Record<string, number>) => {
     const todayKey = getTodayKey();
@@ -128,6 +137,8 @@ export default function CoinsPage() {
   const maxConvertibleCoins = Math.floor(coins / COINS_PER_RUPEE) * COINS_PER_RUPEE;
   const balanceToReceive = coinsToConvert / COINS_PER_RUPEE;
 
+  const getNetworkCooldown = (networkId: string) => networkCooldowns[networkId] || 0;
+
   const handleWatchAd = async (networkId: string, networkCoins: number) => {
     if (!requireAuth('earn coins by watching ads')) return;
     
@@ -137,8 +148,9 @@ export default function CoinsPage() {
       return;
     }
 
-    if (cooldown > 0) {
-      toast.error(`Wait ${cooldown}s before next ad`);
+    const networkCooldown = getNetworkCooldown(networkId);
+    if (networkCooldown > 0) {
+      toast.error(`Wait ${networkCooldown}s for ${networkId}`);
       return;
     }
 
@@ -156,8 +168,8 @@ export default function CoinsPage() {
         
         toast.success(`+${networkCoins} coins!`);
         
-        // Start cooldown
-        setCooldown(COOLDOWN_SECONDS);
+        // Start cooldown for this network only
+        setNetworkCooldowns(prev => ({ ...prev, [networkId]: COOLDOWN_SECONDS }));
       }
       setWatchingAd(null);
     }, 2500);
@@ -433,15 +445,7 @@ export default function CoinsPage() {
               <Play className="w-4 h-4 text-primary" />
               <h2 className="text-sm font-semibold">Watch Ads</h2>
             </div>
-            <div className="flex items-center gap-2">
-              {cooldown > 0 && (
-                <div className="flex items-center gap-1 text-warning text-xs">
-                  <Timer className="w-3 h-3" />
-                  <span>{cooldown}s</span>
-                </div>
-              )}
-              <span className="text-xs text-muted-foreground">{getTotalAdsWatched()}/{AD_NETWORKS.length * MAX_ADS_PER_NETWORK}</span>
-            </div>
+            <span className="text-xs text-muted-foreground">{getTotalAdsWatched()}/{AD_NETWORKS.length * MAX_ADS_PER_NETWORK}</span>
           </div>
 
           {/* Ad Networks - List Layout */}
@@ -473,7 +477,7 @@ export default function CoinsPage() {
                   <Button
                     size="sm"
                     onClick={() => handleWatchAd(network.id, network.coins)}
-                    disabled={watchingAd !== null || isNetworkDone || cooldown > 0 || !user}
+                    disabled={watchingAd !== null || isNetworkDone || getNetworkCooldown(network.id) > 0 || !user}
                     className="h-8 px-4 text-xs"
                     variant={isNetworkDone ? "outline" : "default"}
                   >
@@ -481,8 +485,8 @@ export default function CoinsPage() {
                       <Clock className="w-3.5 h-3.5 animate-spin" />
                     ) : isNetworkDone ? (
                       "Done"
-                    ) : cooldown > 0 ? (
-                      `${cooldown}s`
+                    ) : getNetworkCooldown(network.id) > 0 ? (
+                      `${getNetworkCooldown(network.id)}s`
                     ) : (
                       "Watch"
                     )}
