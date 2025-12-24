@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useProducts } from "@/hooks/useProducts";
-import { ProductType, productTypeLabels, productTypeIcons } from "@/types/product";
+import { Product, ProductType, productTypeLabels, productTypeIcons } from "@/types/product";
 import { Loader2 } from "lucide-react";
 import { GameCardGrid } from "@/components/games/GameCardGrid";
 import { GameCardList } from "@/components/games/GameCardList";
 import { SearchBar } from "@/components/games/SearchBar";
 import { FilterBar } from "@/components/games/FilterBar";
 import { Button } from "@/components/ui/button";
+import { ProductDetailModal } from "@/components/explore/ProductDetailModal";
 import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
@@ -27,6 +28,7 @@ export default function Explore() {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products, loading } = useProducts();
 
   // Reset visible count when category or search changes
@@ -153,13 +155,21 @@ export default function Explore() {
             {viewMode === "grid" ? (
               <div className="grid grid-cols-2 gap-3">
                 {filteredProducts.slice(0, visibleCount).map((product) => (
-                  <GameCardGrid key={product.id} game={product} />
+                  <GameCardGrid 
+                    key={product.id} 
+                    game={product} 
+                    onClick={() => setSelectedProduct(product)}
+                  />
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {filteredProducts.slice(0, visibleCount).map((product) => (
-                  <GameCardList key={product.id} game={product} />
+                  <GameCardList 
+                    key={product.id} 
+                    game={product}
+                    onClick={() => setSelectedProduct(product)}
+                  />
                 ))}
               </div>
             )}
@@ -179,6 +189,13 @@ export default function Explore() {
           </>
         )}
       </div>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        product={selectedProduct}
+        open={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
     </AppLayout>
   );
 }

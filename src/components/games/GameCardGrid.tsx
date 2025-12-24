@@ -1,9 +1,7 @@
-import { Download, Calendar, Folder } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Download, Folder } from "lucide-react";
 import type { Game } from "@/data/mockGames";
 import type { Product } from "@/types/product";
 
-// Support both old Game type and new Product type
 type CardItem = Game | Product;
 
 interface GameCardGridProps {
@@ -12,14 +10,10 @@ interface GameCardGridProps {
 }
 
 export function GameCardGrid({ game, onClick }: GameCardGridProps) {
-  const navigate = useNavigate();
-
   // Handle both Game (year) and Product (releaseYear) formats
   const year = 'year' in game ? game.year : game.releaseYear;
   const size = 'sizeFormatted' in game ? game.sizeFormatted : '';
   const downloads = 'downloads' in game ? game.downloads : 0;
-  const uploadDate = 'uploadDate' in game ? game.uploadDate : '';
-  const filesCount = 'filesCount' in game ? game.filesCount : 0;
   const uploader = 'uploader' in game ? game.uploader : 'Admin';
   
   // Get pricing info for badge
@@ -30,9 +24,13 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
   const handleCardClick = () => {
     if (onClick) {
       onClick();
-    } else {
-      const slug = 'slug' in game ? game.slug : game.id;
-      navigate(`/product/${slug}`);
+    }
+  };
+
+  const handleDownloadClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onClick) {
+      onClick();
     }
   };
 
@@ -66,10 +64,7 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
         </div>
         
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCardClick();
-          }}
+          onClick={handleDownloadClick}
           className="absolute bottom-2 right-2 w-8 h-8 rounded-md bg-card/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-card transition-colors"
         >
           <Download className="w-4 h-4" />
