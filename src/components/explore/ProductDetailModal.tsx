@@ -91,21 +91,25 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
       <SheetContent side="bottom" className="bg-card border-white/10 h-[75vh] rounded-t-2xl p-0">
         <div className="flex flex-col h-full">
           <SheetHeader className="px-3 pt-3 pb-2 border-b border-white/5">
-            <SheetTitle className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2 pr-8">
+              <Button variant="ghost" size="icon" onClick={handleShare} className="shrink-0 h-7 w-7">
+                {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Share2 className="w-3.5 h-3.5" />}
+              </Button>
               <div className="flex items-center gap-1.5 text-foreground flex-1 min-w-0">
                 <span className="text-sm">{productTypeIcons[product.type]}</span>
                 <span className="text-xs font-semibold truncate">{product.title}</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleShare} className="shrink-0 h-7 w-7">
-                {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Share2 className="w-3.5 h-3.5" />}
-              </Button>
             </SheetTitle>
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
-            {/* Thumbnail */}
-            <div className="relative aspect-video rounded-lg overflow-hidden bg-background">
-              <img src={screenshots[0]} alt={product.title} className="w-full h-full object-cover" />
+            {/* Thumbnail - auto height for square/landscape */}
+            <div className="relative rounded-lg overflow-hidden bg-background">
+              <img 
+                src={screenshots[0]} 
+                alt={product.title} 
+                className="w-full h-auto max-h-48 object-contain bg-black/20" 
+              />
               {screenshots.length > 1 && (
                 <Badge className="absolute bottom-1.5 right-1.5 bg-background/80 backdrop-blur-sm text-[9px] px-1.5 py-0.5">
                   +{screenshots.length - 1}
