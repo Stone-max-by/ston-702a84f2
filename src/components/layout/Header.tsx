@@ -30,7 +30,6 @@ export function Header({ title, showBack, onBack }: HeaderProps) {
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-background via-background/95 to-background/80 supports-[backdrop-filter]:backdrop-blur-xl border-b border-border/30"
-      style={{ paddingTop: "calc(var(--safe-area-top) + 16px)" }}
     >
       <div className="flex items-center justify-between h-header px-3">
         <button
