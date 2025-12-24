@@ -13,6 +13,17 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product, ProductType } from "@/types/product";
+import { dummyProducts } from "@/data/dummyProducts";
+
+// Convert dummy products to full Product format
+const getDummyProductsWithIds = (): Product[] => {
+  return dummyProducts.map((p, index) => ({
+    ...p,
+    id: `dummy-${index + 1}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })) as Product[];
+};
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,10 +43,18 @@ export function useProducts() {
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         } as Product);
       });
-      setProducts(productList);
+      
+      // Use dummy products if no products in Firebase
+      if (productList.length === 0) {
+        setProducts(getDummyProductsWithIds());
+      } else {
+        setProducts(productList);
+      }
       setLoading(false);
     }, (error) => {
       console.error("Error fetching products:", error);
+      // Fallback to dummy products on error
+      setProducts(getDummyProductsWithIds());
       setLoading(false);
     });
 
