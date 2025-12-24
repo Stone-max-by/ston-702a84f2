@@ -3,7 +3,6 @@ import { Product, ProductType, productTypeLabels, productTypeIcons } from "@/typ
 import { SearchBar } from "@/components/games/SearchBar";
 import { FilterBar } from "@/components/games/FilterBar";
 import { GameCardGrid } from "@/components/games/GameCardGrid";
-import { GameCardList } from "@/components/games/GameCardList";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +14,6 @@ interface ProductListProps {
 
 export function ProductList({ products, category, onBack }: ProductListProps) {
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const filteredProducts = useMemo(() => {
     if (!search.trim()) return products;
@@ -47,26 +45,16 @@ export function ProductList({ products, category, onBack }: ProductListProps) {
 
       <SearchBar value={search} onChange={setSearch} />
 
-      <FilterBar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        gamesCount={filteredProducts.length}
-      />
+      <FilterBar gamesCount={filteredProducts.length} />
 
       {filteredProducts.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           No products found in this category
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="space-y-4">
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
           {filteredProducts.map((product) => (
             <GameCardGrid key={product.id} game={product} />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredProducts.map((product) => (
-            <GameCardList key={product.id} game={product} />
           ))}
         </div>
       )}
