@@ -95,12 +95,10 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
             <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
           </div>
           
-          <SheetHeader className="px-4 pb-2">
-            <SheetTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-foreground flex-1 min-w-0">
-                <span className="text-base">{productTypeIcons[product.type]}</span>
-                <span className="text-sm font-semibold truncate">{product.title}</span>
-              </div>
+          <SheetHeader className="px-4 pb-2 pr-12">
+            <SheetTitle className="flex items-center gap-2 text-foreground">
+              <span className="text-base">{productTypeIcons[product.type]}</span>
+              <span className="text-sm font-semibold truncate flex-1">{product.title}</span>
               <button 
                 onClick={handleShare} 
                 className="shrink-0 w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
