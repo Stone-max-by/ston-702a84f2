@@ -13,10 +13,11 @@ export function AppLayout({ children, title, showBack, onBack }: AppLayoutProps)
   return (
     <div className="min-h-screen bg-background">
       <Header title={title} showBack={showBack} onBack={onBack} />
-      <main style={{ paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top, 0px))' }} className="pb-bottom-nav">
-        <div className="p-3">
-          {children}
-        </div>
+      <main
+        style={{ paddingTop: "calc(var(--header-height) + var(--safe-area-top))" }}
+        className="pb-bottom-nav"
+      >
+        <div className="p-3">{children}</div>
       </main>
       <BottomNav />
     </div>
