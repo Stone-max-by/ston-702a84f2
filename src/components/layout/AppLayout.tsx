@@ -14,7 +14,7 @@ export function AppLayout({ children, title, showBack, onBack }: AppLayoutProps)
     <div className="min-h-screen bg-background">
       <Header title={title} showBack={showBack} onBack={onBack} />
       <main
-        style={{ paddingTop: "calc(var(--header-height) + var(--safe-area-top) + 8px)" }}
+        style={{ paddingTop: "calc(var(--header-height) + var(--safe-area-top) + 16px)" }}
         className="pb-bottom-nav"
       >
         <div className="p-3">{children}</div>
