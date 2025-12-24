@@ -24,6 +24,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminApiEndpoints from "./pages/admin/AdminApiEndpoints";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminApiKeys from "./pages/admin/AdminApiKeys";
+import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
               <Route path="/admin/api" element={<AdminLayout><AdminApiEndpoints /></AdminLayout>} />
               <Route path="/admin/api-keys" element={<AdminLayout><AdminApiKeys /></AdminLayout>} />
+              <Route path="/admin/redeem-codes" element={<AdminLayout><AdminRedeemCodes /></AdminLayout>} />
               <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
               
               <Route path="*" element={<NotFound />} />
