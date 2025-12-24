@@ -151,7 +151,7 @@ export default function Explore() {
         ) : (
           <>
             {viewMode === "grid" ? (
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
                 {filteredProducts.slice(0, visibleCount).map((product) => (
                   <GameCardGrid key={product.id} game={product} />
                 ))}

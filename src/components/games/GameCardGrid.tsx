@@ -41,7 +41,7 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
       onClick={handleCardClick}
       className="glass-card overflow-hidden cursor-pointer animate-fade-in hover:border-primary/30 transition-colors"
     >
-      <div className="relative aspect-[4/3]">
+      <div className="relative aspect-[3/2]">
         <img
           src={game.thumbnail}
           alt={game.title}
