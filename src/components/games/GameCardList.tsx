@@ -1,5 +1,4 @@
 import { Download, Folder } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import type { Game } from "@/data/mockGames";
 import type { Product } from "@/types/product";
 
@@ -11,8 +10,6 @@ interface GameCardListProps {
 }
 
 export function GameCardList({ game, onClick }: GameCardListProps) {
-  const navigate = useNavigate();
-
   const size = 'sizeFormatted' in game ? game.sizeFormatted : '';
   const downloads = 'downloads' in game ? game.downloads : 0;
   
@@ -24,9 +21,13 @@ export function GameCardList({ game, onClick }: GameCardListProps) {
   const handleCardClick = () => {
     if (onClick) {
       onClick();
-    } else {
-      const slug = 'slug' in game ? game.slug : game.id;
-      navigate(`/product/${slug}`);
+    }
+  };
+
+  const handleDownloadClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onClick) {
+      onClick();
     }
   };
 
@@ -84,10 +85,7 @@ export function GameCardList({ game, onClick }: GameCardListProps) {
       </div>
 
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleCardClick();
-        }}
+        onClick={handleDownloadClick}
         className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-foreground hover:bg-muted/80 transition-colors self-center flex-shrink-0"
       >
         <Download className="w-4 h-4" />
