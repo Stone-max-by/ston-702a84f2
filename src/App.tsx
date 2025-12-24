@@ -19,6 +19,7 @@ import BotMarketplace from "./pages/BotMarketplace";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
+import AdminBots from "./pages/admin/AdminBots";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminApiEndpoints from "./pages/admin/AdminApiEndpoints";
 import AdminSettings from "./pages/admin/AdminSettings";
@@ -48,6 +49,7 @@ const App = () => (
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
               <Route path="/admin/products" element={<AdminLayout><AdminProducts /></AdminLayout>} />
+              <Route path="/admin/bots" element={<AdminLayout><AdminBots /></AdminLayout>} />
               <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
               <Route path="/admin/api" element={<AdminLayout><AdminApiEndpoints /></AdminLayout>} />
               <Route path="/admin/api-keys" element={<AdminLayout><AdminApiKeys /></AdminLayout>} />

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Gamepad2, Users, Settings, ArrowLeft, Menu, Code, Loader2, ShieldAlert, Key } from "lucide-react";
+import { LayoutDashboard, Gamepad2, Users, Settings, ArrowLeft, Menu, Code, Loader2, ShieldAlert, Key, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -8,6 +8,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/admin/products", icon: Gamepad2, label: "Products" },
+  { to: "/admin/bots", icon: Bot, label: "Telegram Bots" },
   { to: "/admin/users", icon: Users, label: "Users" },
   { to: "/admin/api", icon: Code, label: "API Endpoints" },
   { to: "/admin/api-keys", icon: Key, label: "API Keys" },

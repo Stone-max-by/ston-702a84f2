@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TelegramBot } from '@/types/bot';
+import { dummyBots } from '@/data/dummyBots';
 
 export function useBots() {
   const [bots, setBots] = useState<TelegramBot[]>([]);
@@ -15,16 +16,22 @@ export function useBots() {
         const q = query(botsRef, orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
         
-        const botsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date()
-        })) as TelegramBot[];
-        
-        setBots(botsData.filter(bot => bot.isActive));
+        if (snapshot.empty) {
+          // Use dummy bots if no bots in Firebase
+          setBots(dummyBots);
+        } else {
+          const botsData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date()
+          })) as TelegramBot[];
+          
+          setBots(botsData.filter(bot => bot.isActive));
+        }
       } catch (err) {
         console.error('Error fetching bots:', err);
-        setError('Failed to load bots');
+        // Fallback to dummy bots on error
+        setBots(dummyBots);
       } finally {
         setLoading(false);
       }
