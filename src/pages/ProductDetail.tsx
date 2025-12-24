@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
+import { useUserData } from "@/hooks/useUserData";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +28,8 @@ import {
   Play,
   Coins,
   ShoppingCart,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -36,27 +40,72 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { requireAuth } = useRequireAuth();
+  const { coins, updateCoins, addPurchasedFile, hasFile, userData } = useUserData();
+  const [purchasing, setPurchasing] = useState(false);
 
   const product = products.find((p) => p.slug === slug || p.id === slug);
+  const isOwned = product ? hasFile(product.id) : false;
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!requireAuth("access this product")) return;
+    if (!product) return;
     
-    if (product?.isFree && !product?.unlockByAds) {
+    // Already owned - just download
+    if (isOwned) {
       toast({
         title: "Download Started",
-        description: `Downloading ${product?.title}...`,
+        description: `Downloading ${product.title}...`,
       });
-    } else if (product?.unlockByAds) {
+      return;
+    }
+    
+    // Free product
+    if (product.isFree && !product.unlockByAds) {
+      await addPurchasedFile(product.id);
+      toast({
+        title: "Download Started",
+        description: `Downloading ${product.title}...`,
+      });
+      return;
+    }
+    
+    // Unlock by ads
+    if (product.unlockByAds) {
       toast({
         title: "Watch Ads Required",
-        description: `Watch ${product?.adCreditsRequired} ad(s) to unlock this product`,
+        description: `Watch ${product.adCreditsRequired} ad(s) to unlock this product`,
       });
-    } else {
+      return;
+    }
+    
+    // Paid product - purchase with coins
+    const price = product.coinPrice || 0;
+    
+    if (coins < price) {
       toast({
-        title: "Purchase Required",
-        description: `This product costs ${product?.coinPrice} coins`,
+        title: "Insufficient Coins",
+        description: `You need ${price} coins but only have ${coins}. Get more coins to purchase.`,
+        variant: "destructive",
       });
+      return;
+    }
+    
+    try {
+      setPurchasing(true);
+      await updateCoins(coins - price);
+      await addPurchasedFile(product.id);
+      toast({
+        title: "Purchase Successful!",
+        description: `${product.title} is now yours. Downloading...`,
+      });
+    } catch (error) {
+      toast({
+        title: "Purchase Failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -310,7 +359,16 @@ const ProductDetail = () => {
 
         {/* Fixed Action Button */}
         <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-          {product.isFree && !product.unlockByAds ? (
+          {isOwned ? (
+            <Button
+              onClick={handleAction}
+              className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700"
+              size="lg"
+            >
+              <CheckCircle className="w-5 h-5" />
+              Download (Owned)
+            </Button>
+          ) : product.isFree && !product.unlockByAds ? (
             <Button
               onClick={handleAction}
               className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700"
@@ -331,11 +389,16 @@ const ProductDetail = () => {
           ) : (
             <Button
               onClick={handleAction}
+              disabled={purchasing}
               className="w-full h-12 text-base font-semibold gap-2"
               size="lg"
             >
-              <Coins className="w-5 h-5" />
-              Buy for {product.coinPrice} Coins
+              {purchasing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Coins className="w-5 h-5" />
+              )}
+              {purchasing ? "Processing..." : `Buy for ${product.coinPrice} Coins`}
             </Button>
           )}
         </div>
