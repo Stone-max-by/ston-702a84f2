@@ -15,6 +15,7 @@ import Transactions from "./pages/Transactions";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProductDetail from "./pages/ProductDetail";
+import BotMarketplace from "./pages/BotMarketplace";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
@@ -36,6 +37,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/product/:slug" element={<ProductDetail />} />
+              <Route path="/bots" element={<BotMarketplace />} />
               <Route path="/coins" element={<Coins />} />
               <Route path="/stats" element={<Stats />} />
               <Route path="/profile" element={<Profile />} />
