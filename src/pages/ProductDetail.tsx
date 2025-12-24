@@ -23,6 +23,9 @@ import {
   Star,
   Share2,
   Clock,
+  Play,
+  Coins,
+  ShoppingCart,
 } from "lucide-react";
 import { productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -36,12 +39,25 @@ const ProductDetail = () => {
 
   const product = products.find((p) => p.slug === slug || p.id === slug);
 
-  const handleDownload = () => {
-    if (!requireAuth("download this product")) return;
-    toast({
-      title: "Download Started",
-      description: `Downloading ${product?.title}...`,
-    });
+  const handleAction = () => {
+    if (!requireAuth("access this product")) return;
+    
+    if (product?.isFree && !product?.unlockByAds) {
+      toast({
+        title: "Download Started",
+        description: `Downloading ${product?.title}...`,
+      });
+    } else if (product?.unlockByAds) {
+      toast({
+        title: "Watch Ads Required",
+        description: `Watch ${product?.adCreditsRequired} ad(s) to unlock this product`,
+      });
+    } else {
+      toast({
+        title: "Purchase Required",
+        description: `This product costs ${product?.coinPrice} coins`,
+      });
+    }
   };
 
   const handleShare = () => {
@@ -292,16 +308,36 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Fixed Download Button */}
+        {/* Fixed Action Button */}
         <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-          <Button
-            onClick={handleDownload}
-            className="w-full h-12 text-base font-semibold gap-2"
-            size="lg"
-          >
-            <Download className="w-5 h-5" />
-            {product.isFree ? "Download Free" : `Download - $${product.priceUSD}`}
-          </Button>
+          {product.isFree && !product.unlockByAds ? (
+            <Button
+              onClick={handleAction}
+              className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700"
+              size="lg"
+            >
+              <Download className="w-5 h-5" />
+              Download Free
+            </Button>
+          ) : product.unlockByAds ? (
+            <Button
+              onClick={handleAction}
+              className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700"
+              size="lg"
+            >
+              <Play className="w-5 h-5" />
+              Watch {product.adCreditsRequired} Ad{product.adCreditsRequired > 1 ? 's' : ''} to Download
+            </Button>
+          ) : (
+            <Button
+              onClick={handleAction}
+              className="w-full h-12 text-base font-semibold gap-2"
+              size="lg"
+            >
+              <Coins className="w-5 h-5" />
+              Buy for {product.coinPrice} Coins
+            </Button>
+          )}
         </div>
       </div>
     </AppLayout>

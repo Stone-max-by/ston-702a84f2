@@ -1,10 +1,7 @@
-import { Download, Calendar, Folder, ShoppingCart, Play, Coins } from "lucide-react";
+import { Download, Calendar, Folder } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Game } from "@/data/mockGames";
 import type { Product } from "@/types/product";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 
 // Support both old Game type and new Product type
 type CardItem = Game | Product;
@@ -16,26 +13,6 @@ interface GameCardGridProps {
 
 export function GameCardGrid({ game, onClick }: GameCardGridProps) {
   const navigate = useNavigate();
-  const { requireAuth } = useRequireAuth();
-
-  // Get product pricing info
-  const isFree = 'isFree' in game ? game.isFree : true;
-  const unlockByAds = 'unlockByAds' in game ? game.unlockByAds : false;
-  const adCreditsRequired = 'adCreditsRequired' in game ? game.adCreditsRequired : 0;
-  const coinPrice = 'coinPrice' in game ? game.coinPrice : 0;
-
-  const handleAction = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!requireAuth('access this item')) return;
-    
-    if (isFree && !unlockByAds) {
-      toast.success(`Starting download: ${game.title}`);
-    } else if (unlockByAds) {
-      toast.info(`Watch ${adCreditsRequired} ad(s) to unlock: ${game.title}`);
-    } else {
-      toast.info(`Buy for ${coinPrice} coins: ${game.title}`);
-    }
-  };
 
   // Handle both Game (year) and Product (releaseYear) formats
   const year = 'year' in game ? game.year : game.releaseYear;
@@ -44,6 +21,11 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
   const uploadDate = 'uploadDate' in game ? game.uploadDate : '';
   const filesCount = 'filesCount' in game ? game.filesCount : 0;
   const uploader = 'uploader' in game ? game.uploader : 'Admin';
+  
+  // Get pricing info for badge
+  const isFree = 'isFree' in game ? game.isFree : true;
+  const unlockByAds = 'unlockByAds' in game ? game.unlockByAds : false;
+  const coinPrice = 'coinPrice' in game ? game.coinPrice : 0;
 
   const handleCardClick = () => {
     if (onClick) {
@@ -53,34 +35,6 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
       navigate(`/product/${slug}`);
     }
   };
-
-  // Determine button variant and text
-  const getButtonConfig = () => {
-    if (isFree && !unlockByAds) {
-      return {
-        icon: <Download className="w-4 h-4" />,
-        label: "Download",
-        variant: "default" as const,
-        className: "bg-green-600 hover:bg-green-700 text-white"
-      };
-    } else if (unlockByAds) {
-      return {
-        icon: <Play className="w-4 h-4" />,
-        label: `Watch ${adCreditsRequired} Ad${adCreditsRequired > 1 ? 's' : ''}`,
-        variant: "secondary" as const,
-        className: "bg-amber-600 hover:bg-amber-700 text-white"
-      };
-    } else {
-      return {
-        icon: <Coins className="w-4 h-4" />,
-        label: `${coinPrice} Coins`,
-        variant: "default" as const,
-        className: "bg-primary hover:bg-primary/90"
-      };
-    }
-  };
-
-  const buttonConfig = getButtonConfig();
 
   return (
     <div
@@ -110,6 +64,16 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
             </span>
           )}
         </div>
+        
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCardClick();
+          }}
+          className="absolute bottom-3 right-3 w-11 h-11 rounded-lg bg-card/90 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-card transition-colors"
+        >
+          <Download className="w-5 h-5" />
+        </button>
       </div>
 
       <div className="p-3 space-y-2">
@@ -143,15 +107,13 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
           )}
         </div>
 
-        {/* Action Button */}
-        <Button
-          onClick={handleAction}
-          size="sm"
-          className={`w-full gap-2 ${buttonConfig.className}`}
-        >
-          {buttonConfig.icon}
-          {buttonConfig.label}
-        </Button>
+        <div className="flex flex-wrap gap-1.5">
+          {game.tags?.filter(t => t !== "4GB").map((tag) => (
+            <span key={tag} className="tag-pill">
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
