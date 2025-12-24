@@ -97,14 +97,16 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
           
           <SheetHeader className="px-4 pb-2 pr-12">
             <SheetTitle className="flex items-center gap-2 text-foreground">
-              <span className="text-base">{productTypeIcons[product.type]}</span>
-              <span className="text-sm font-semibold truncate flex-1">{product.title}</span>
               <button 
                 onClick={handleShare} 
                 className="shrink-0 w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
               >
                 {copied ? <Check className="w-4 h-4 text-success" /> : <Share2 className="w-4 h-4 text-muted-foreground" />}
               </button>
+              <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+                <span className="text-base">{productTypeIcons[product.type]}</span>
+                <span className="text-sm font-semibold truncate">{product.title}</span>
+              </div>
             </SheetTitle>
           </SheetHeader>
 
