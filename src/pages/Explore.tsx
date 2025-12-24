@@ -7,7 +7,10 @@ import { GameCardGrid } from "@/components/games/GameCardGrid";
 import { GameCardList } from "@/components/games/GameCardList";
 import { SearchBar } from "@/components/games/SearchBar";
 import { FilterBar } from "@/components/games/FilterBar";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const ITEMS_PER_PAGE = 10;
 
 const PRODUCT_TYPES: ProductType[] = [
   "game",
@@ -23,7 +26,19 @@ export default function Explore() {
   const [selectedCategory, setSelectedCategory] = useState<ProductType | "all">("all");
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const { products, loading } = useProducts();
+
+  // Reset visible count when category or search changes
+  const handleCategoryChange = (category: ProductType | "all") => {
+    setSelectedCategory(category);
+    setVisibleCount(ITEMS_PER_PAGE);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setVisibleCount(ITEMS_PER_PAGE);
+  };
 
   // Get visible products only
   const visibleProducts = useMemo(() => {
@@ -87,7 +102,7 @@ export default function Explore() {
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
-            onClick={() => setSelectedCategory("all")}
+            onClick={() => handleCategoryChange("all")}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
               selectedCategory === "all"
@@ -103,7 +118,7 @@ export default function Explore() {
           {availableCategories.map((type) => (
             <button
               key={type}
-              onClick={() => setSelectedCategory(type)}
+              onClick={() => handleCategoryChange(type)}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
                 selectedCategory === type
@@ -119,7 +134,7 @@ export default function Explore() {
         </div>
 
         {/* Search */}
-        <SearchBar value={search} onChange={setSearch} />
+        <SearchBar value={search} onChange={handleSearchChange} />
 
         {/* Filter Bar */}
         <FilterBar
@@ -133,18 +148,35 @@ export default function Explore() {
           <div className="text-center py-12 text-muted-foreground">
             No products found
           </div>
-        ) : viewMode === "grid" ? (
-          <div className="space-y-4">
-            {filteredProducts.map((product) => (
-              <GameCardGrid key={product.id} game={product} />
-            ))}
-          </div>
         ) : (
-          <div className="space-y-3">
-            {filteredProducts.map((product) => (
-              <GameCardList key={product.id} game={product} />
-            ))}
-          </div>
+          <>
+            {viewMode === "grid" ? (
+              <div className="space-y-4">
+                {filteredProducts.slice(0, visibleCount).map((product) => (
+                  <GameCardGrid key={product.id} game={product} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredProducts.slice(0, visibleCount).map((product) => (
+                  <GameCardList key={product.id} game={product} />
+                ))}
+              </div>
+            )}
+            
+            {/* Load More Button */}
+            {visibleCount < filteredProducts.length && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
+                  className="w-full max-w-xs"
+                >
+                  Load More ({filteredProducts.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </AppLayout>
