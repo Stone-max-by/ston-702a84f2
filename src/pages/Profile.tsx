@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -19,12 +19,16 @@ import {
   Package,
   ShoppingCart,
   Zap,
+  ExternalLink,
+  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUserData } from "@/hooks/useUserData";
+import { useAdminSettings } from "@/hooks/useAdminSettings";
+import { useReferralChannel } from "@/hooks/useReferralChannel";
 import { format } from "date-fns";
 import { ApiKeyManager } from "@/components/profile/ApiKeyManager";
 
@@ -44,6 +48,8 @@ export default function Profile() {
     revokeApiKey,
     regenerateApiKey,
   } = useUserData();
+  const { settings } = useAdminSettings();
+  const { verifying, verifyAndClaimReward } = useReferralChannel();
   const navigate = useNavigate();
 
   const botUsername = "PyWalletBot";
@@ -66,6 +72,24 @@ export default function Profile() {
     await signOut();
     toast.success("Logged out successfully");
     navigate("/");
+  };
+
+  const handleVerifyChannel = async () => {
+    if (!user?.telegramId || !userData?.id) return;
+    
+    await verifyAndClaimReward(
+      user.telegramId,
+      userData.id,
+      settings.telegramChannelId,
+      referral.referredBy,
+      settings.referralBonus
+    );
+  };
+
+  const openChannel = () => {
+    if (settings.telegramChannelUrl) {
+      window.open(settings.telegramChannelUrl, '_blank');
+    }
   };
 
   if (loading) {
@@ -206,7 +230,7 @@ export default function Profile() {
           </div>
           
           <p className="text-sm text-muted-foreground">
-            Share your referral link. Earn {referralBonusCoins} coins when your friend makes a purchase!
+            Share your referral link. Earn ₹{settings.referralBonus} when your friend joins the channel!
           </p>
           
           <div className="flex items-center gap-2">
@@ -222,6 +246,49 @@ export default function Profile() {
               <Copy className="w-4 h-4" />
             </Button>
           </div>
+
+          {/* Channel Join Section for referred users */}
+          {settings.referralEnabled && settings.telegramChannelId && referral.referredBy && !referral.channelJoined && (
+            <div className="p-3 bg-gradient-to-r from-primary/10 to-success/10 rounded-lg border border-primary/20 space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                🎁 Join our channel to give your referrer ₹{settings.referralBonus} reward!
+              </p>
+              <div className="flex gap-2">
+                {settings.telegramChannelUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openChannel}
+                    className="flex-1 gap-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Join Channel
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  onClick={handleVerifyChannel}
+                  disabled={verifying}
+                  className="flex-1 gap-1"
+                >
+                  {verifying ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-3.5 h-3.5" />
+                  )}
+                  Verify
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Show if already joined */}
+          {referral.channelJoined && (
+            <div className="flex items-center gap-2 p-2 bg-success/10 rounded-lg border border-success/20">
+              <CheckCircle className="w-4 h-4 text-success" />
+              <span className="text-sm text-success">Channel joined!</span>
+            </div>
+          )}
           
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div className="p-3 bg-muted/30 rounded-lg text-center">
@@ -233,10 +300,10 @@ export default function Profile() {
             </div>
             <div className="p-3 bg-muted/30 rounded-lg text-center">
               <div className="flex items-center justify-center gap-1 text-lg font-bold text-foreground">
-                <Coins className="w-4 h-4 text-yellow-500" />
-                {referral.referralEarnings}
+                <Wallet className="w-4 h-4 text-success" />
+                ₹{referral.referralEarnings}
               </div>
-              <p className="text-xs text-muted-foreground">Coins Earned</p>
+              <p className="text-xs text-muted-foreground">Balance Earned</p>
             </div>
           </div>
         </div>

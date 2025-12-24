@@ -15,8 +15,13 @@ export interface AppSettings {
   // Bonuses
   firstDepositBonus: number; // percentage
   firstPurchaseBonus: number; // coins
-  referralBonus: number; // coins
+  referralBonus: number; // balance (₹) given when referral joins channel
   welcomeBonus: number; // balance
+  
+  // Referral Settings
+  telegramChannelId: string; // Channel ID for verification (e.g., @channelname or -1001234567890)
+  telegramChannelUrl: string; // Public channel URL for users to join
+  referralEnabled: boolean; // Enable/disable referral system
   
   // Features
   enableAdUnlock: boolean;
@@ -42,8 +47,11 @@ const DEFAULT_SETTINGS: AppSettings = {
   conversionFee: 2,
   firstDepositBonus: 10,
   firstPurchaseBonus: 50,
-  referralBonus: 50,
+  referralBonus: 5, // ₹5 per referral who joins channel
   welcomeBonus: 500,
+  telegramChannelId: "", // Set your channel ID
+  telegramChannelUrl: "", // Set your channel URL
+  referralEnabled: true,
   enableAdUnlock: true,
   enableCoinPayments: true,
   maintenanceMode: false,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Save, Plus, X, Loader2, Shield } from "lucide-react";
+import { Save, Plus, X, Loader2, Shield, Gift, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -185,9 +185,79 @@ export default function AdminSettings() {
         </div>
       </div>
 
+      {/* Referral System */}
+      <div className="bg-card rounded-xl p-5 border border-white/5 space-y-5">
+        <div className="flex items-center gap-2">
+          <Gift className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Referral System</h2>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Enable Referral System</Label>
+            <p className="text-xs text-muted-foreground">Allow users to earn rewards for referrals</p>
+          </div>
+          <Switch
+            checked={settings.referralEnabled}
+            onCheckedChange={(checked) => updateSetting("referralEnabled", checked)}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="referralBonus">Referral Bonus (₹)</Label>
+            <Input
+              id="referralBonus"
+              type="number"
+              value={settings.referralBonus}
+              onChange={(e) => updateSetting("referralBonus", parseInt(e.target.value) || 0)}
+              className="bg-background border-white/10"
+            />
+            <p className="text-xs text-muted-foreground">
+              Balance given to referrer when friend joins channel
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 pt-2 border-t border-white/10">
+          <div className="flex items-center gap-2 pt-3">
+            <Send className="w-4 h-4 text-primary" />
+            <Label className="font-medium">Telegram Channel Settings</Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="channelId">Channel ID</Label>
+            <Input
+              id="channelId"
+              value={settings.telegramChannelId}
+              onChange={(e) => updateSetting("telegramChannelId", e.target.value)}
+              placeholder="@channelname or -1001234567890"
+              className="bg-background border-white/10 font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Use @username for public channels or numeric ID for private ones
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="channelUrl">Channel URL</Label>
+            <Input
+              id="channelUrl"
+              value={settings.telegramChannelUrl}
+              onChange={(e) => updateSetting("telegramChannelUrl", e.target.value)}
+              placeholder="https://t.me/yourchannel"
+              className="bg-background border-white/10 font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Public link for users to join the channel
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Bonuses */}
       <div className="bg-card rounded-xl p-5 border border-white/5 space-y-5">
-        <h2 className="text-lg font-semibold text-foreground">Bonuses</h2>
+        <h2 className="text-lg font-semibold text-foreground">Other Bonuses</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -208,17 +278,6 @@ export default function AdminSettings() {
               type="number"
               value={settings.firstPurchaseBonus}
               onChange={(e) => updateSetting("firstPurchaseBonus", parseInt(e.target.value) || 0)}
-              className="bg-background border-white/10"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="referral">Referral Bonus (coins)</Label>
-            <Input
-              id="referral"
-              type="number"
-              value={settings.referralBonus}
-              onChange={(e) => updateSetting("referralBonus", parseInt(e.target.value) || 0)}
               className="bg-background border-white/10"
             />
           </div>
