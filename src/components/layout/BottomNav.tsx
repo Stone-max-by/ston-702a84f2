@@ -1,9 +1,10 @@
-import { LayoutGrid, Coins, Code2, User } from "lucide-react";
+import { LayoutGrid, Coins, Code2, User, Bot } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LayoutGrid, label: "Explore", path: "/" },
+  { icon: Bot, label: "Bots", path: "/bots" },
   { icon: Coins, label: "Coins", path: "/coins" },
   { icon: Code2, label: "API", path: "/api-docs" },
   { icon: User, label: "Me", path: "/profile" },
