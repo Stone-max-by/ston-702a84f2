@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Bot, Search, Sparkles, TrendingUp, Clock, Filter } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BotCard } from "@/components/bots/BotCard";
+import { BotDetailModal } from "@/components/bots/BotDetailModal";
 import { BotPurchaseModal } from "@/components/bots/BotPurchaseModal";
 import { useBots } from "@/hooks/useBots";
 import { TelegramBot } from "@/types/bot";
@@ -22,6 +22,7 @@ export default function BotMarketplace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedBot, setSelectedBot] = useState<TelegramBot | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
 
   const filteredBots = bots.filter(bot => {
@@ -33,6 +34,11 @@ export default function BotMarketplace() {
 
   const handleBotClick = (bot: TelegramBot) => {
     setSelectedBot(bot);
+    setDetailModalOpen(true);
+  };
+
+  const handleGetNow = () => {
+    setDetailModalOpen(false);
     setPurchaseModalOpen(true);
   };
 
@@ -144,6 +150,14 @@ export default function BotMarketplace() {
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
+      <BotDetailModal
+        bot={selectedBot}
+        open={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        onGetNow={handleGetNow}
+      />
 
       {/* Purchase Modal */}
       <BotPurchaseModal

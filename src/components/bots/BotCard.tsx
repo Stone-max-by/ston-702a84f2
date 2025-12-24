@@ -1,7 +1,5 @@
-import { Star, Zap, Users } from "lucide-react";
+import { Download, Folder, Star } from "lucide-react";
 import { TelegramBot } from "@/types/bot";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 interface BotCardProps {
   bot: TelegramBot;
@@ -15,69 +13,56 @@ export function BotCard({ bot, onClick }: BotCardProps) {
     : 0;
 
   return (
-    <div 
+    <div
       onClick={onClick}
-      className="group relative bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/40 hover:border-primary/40 transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/5"
+      className="glass-card overflow-hidden cursor-pointer animate-fade-in hover:border-primary/30 transition-colors"
     >
-      {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <img 
-          src={bot.image} 
+      <div className="relative aspect-[4/3]">
+        <img
+          src={bot.image}
           alt={bot.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover"
+          loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+        <div className="absolute top-1.5 left-1.5">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-foreground">{bot.category}</span>
+        </div>
         
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex gap-1.5">
-          <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-xs">
-            {bot.category}
-          </Badge>
-          {hasDiscount && (
-            <Badge className="bg-destructive/90 text-destructive-foreground text-xs">
+        {/* Price badge */}
+        <div className="absolute top-1.5 right-1.5">
+          {hasDiscount ? (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/90 text-white">
               -{discountPercent}%
-            </Badge>
+            </span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/90 text-primary-foreground">
+              ₹{bot.price}
+            </span>
           )}
         </div>
-
-        {/* Rating */}
-        <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 backdrop-blur-sm">
+        
+        {/* Rating badge */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-card/90 backdrop-blur-sm text-foreground">
           <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-          <span className="text-xs font-medium">{bot.rating.toFixed(1)}</span>
+          <span className="text-[10px] font-medium">{bot.rating.toFixed(1)}</span>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-3 space-y-2">
-        <h3 className="font-semibold text-sm line-clamp-1">{bot.name}</h3>
-        <p className="text-xs text-muted-foreground line-clamp-2">{bot.shortDescription}</p>
-        
-        {/* Stats & Price */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-0.5">
-              <Users className="w-3 h-3" />
-              <span>{bot.totalSales}</span>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <Zap className="w-3 h-3 text-primary" />
-              <span>Instant</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            {hasDiscount && (
-              <span className="text-xs text-muted-foreground line-through">
-                ₹{bot.originalPrice}
-              </span>
-            )}
-            <span className={cn(
-              "font-bold text-sm",
-              hasDiscount ? "text-success" : "text-foreground"
-            )}>
-              ₹{bot.price}
+      <div className="p-2 space-y-1">
+        <h3 className="font-medium text-xs text-foreground line-clamp-1">
+          {bot.name}
+        </h3>
+
+        <p className="text-[10px] text-muted-foreground line-clamp-1">
+          {bot.shortDescription}
+        </p>
+
+        <div className="flex flex-wrap gap-1">
+          {bot.features?.slice(0, 2).map((feature, index) => (
+            <span key={index} className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+              {feature}
             </span>
-          </div>
+          ))}
         </div>
       </div>
     </div>
