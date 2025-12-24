@@ -28,15 +28,20 @@ export function Header({ title, showBack, onBack }: HeaderProps) {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <header
+      className="fixed top-0 left-0 right-0 z-50 bg-background/70 supports-[backdrop-filter]:bg-background/50 backdrop-blur-xl border-b border-border/40"
+      style={{ paddingTop: "var(--safe-area-top)" }}
+    >
       <div className="flex items-center justify-between h-header px-3">
         <button
+          type="button"
           onClick={onBack}
-          className="w-8 h-8 flex items-center justify-center text-foreground"
+          disabled={!showBack}
+          aria-label={showBack ? "Back" : ""}
+          className="w-8 h-8 flex items-center justify-center text-foreground disabled:opacity-0 disabled:pointer-events-none"
         >
           {showBack && <X className="w-5 h-5" />}
         </button>
-
         <h1 className="text-base font-semibold text-foreground">{title}</h1>
 
         {user ? (
