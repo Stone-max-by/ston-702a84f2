@@ -99,6 +99,16 @@ export default function Explore() {
   return (
     <AppLayout title="Explore">
       <div className="space-y-4">
+        {/* Search */}
+        <SearchBar value={search} onChange={handleSearchChange} />
+
+        {/* Filter Bar */}
+        <FilterBar
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          gamesCount={filteredProducts.length}
+        />
+
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
@@ -132,16 +142,6 @@ export default function Explore() {
             </button>
           ))}
         </div>
-
-        {/* Search */}
-        <SearchBar value={search} onChange={handleSearchChange} />
-
-        {/* Filter Bar */}
-        <FilterBar
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          gamesCount={filteredProducts.length}
-        />
 
         {/* Products */}
         {filteredProducts.length === 0 ? (
