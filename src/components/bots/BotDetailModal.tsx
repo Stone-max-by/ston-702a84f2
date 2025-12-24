@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Bot,
+  Star,
   Users,
   Zap,
   Shield,
@@ -15,7 +16,6 @@ import {
 } from "lucide-react";
 import { TelegramBot } from "@/types/bot";
 import { toast } from "@/hooks/use-toast";
-import { StarRating } from "@/components/shared/StarRating";
 
 interface BotDetailModalProps {
   bot: TelegramBot | null;
@@ -26,7 +26,6 @@ interface BotDetailModalProps {
 
 export function BotDetailModal({ bot, open, onClose, onGetNow }: BotDetailModalProps) {
   const [copied, setCopied] = useState(false);
-  const [userRating, setUserRating] = useState(0);
 
   if (!bot) return null;
 
@@ -40,11 +39,6 @@ export function BotDetailModal({ bot, open, onClose, onGetNow }: BotDetailModalP
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({ title: "Link Copied" });
-  };
-
-  const handleRating = (rating: number) => {
-    setUserRating(rating);
-    toast({ title: "Rating Submitted", description: `You rated ${bot.name} ${rating} stars` });
   };
 
   return (
@@ -94,20 +88,14 @@ export function BotDetailModal({ bot, open, onClose, onGetNow }: BotDetailModalP
               ))}
             </div>
 
-            {/* Stats & Rating */}
+            {/* Stats */}
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded">
-                <StarRating value={bot.rating} readonly size="sm" showValue />
-              </div>
+              <span className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded">
+                <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />{bot.rating.toFixed(1)}
+              </span>
               <span className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded">
                 <Users className="w-3 h-3" />{bot.totalSales} sales
               </span>
-            </div>
-
-            {/* User Rating */}
-            <div className="bg-background rounded-lg p-3 border border-white/5">
-              <h4 className="text-xs font-semibold text-foreground mb-2">Rate this Bot</h4>
-              <StarRating value={userRating} onChange={handleRating} size="md" />
             </div>
 
             {/* Description */}
