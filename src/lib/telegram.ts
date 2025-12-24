@@ -111,24 +111,6 @@ export const initTelegramWebApp = () => {
     // Set theme colors to match app
     webApp.setHeaderColor('#000000');
     webApp.setBackgroundColor('#000000');
-    
-    // Request fullscreen mode (hides Telegram header)
-    try {
-      if (typeof webApp.requestFullscreen === 'function') {
-        webApp.requestFullscreen();
-      }
-    } catch (e) {
-      console.log('Fullscreen not supported:', e);
-    }
-    
-    // Disable vertical swipes to prevent accidental close
-    try {
-      if (typeof webApp.disableVerticalSwipes === 'function') {
-        webApp.disableVerticalSwipes();
-      }
-    } catch (e) {
-      console.log('Disable vertical swipes not supported:', e);
-    }
   }
 };
 
