@@ -29,8 +29,8 @@ export function Header({ title, showBack, onBack }: HeaderProps) {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 bg-background/70 supports-[backdrop-filter]:bg-background/50 backdrop-blur-xl border-b border-border/40"
-      style={{ paddingTop: "var(--safe-area-top)" }}
+      className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-background via-background/95 to-background/80 supports-[backdrop-filter]:backdrop-blur-xl border-b border-border/30"
+      style={{ paddingTop: "calc(var(--safe-area-top) + 8px)" }}
     >
       <div className="flex items-center justify-between h-header px-3">
         <button
@@ -42,7 +42,7 @@ export function Header({ title, showBack, onBack }: HeaderProps) {
         >
           {showBack && <X className="w-5 h-5" />}
         </button>
-        <h1 className="text-base font-semibold text-foreground">{title}</h1>
+        <h1 className="text-sm font-medium text-foreground">{title}</h1>
 
         {user ? (
           <Popover>
