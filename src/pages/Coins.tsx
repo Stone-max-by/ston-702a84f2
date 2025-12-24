@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Coins, Play, Gift, CheckCircle, Clock, Sparkles, Loader2, ArrowRightLeft, Wallet, Minus, Plus, Timer } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Coins, Play, Gift, CheckCircle, Clock, Sparkles, Loader2, ArrowRightLeft, Wallet, Minus, Plus, Timer, Ticket } from "lucide-react";
 import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useUserData } from "@/hooks/useUserData";
+import { useRedeemCode } from "@/hooks/useRedeemCodes";
 
 // Exchange rate: 10 coins = ₹1
 const COINS_PER_RUPEE = 10;
@@ -46,6 +48,9 @@ export default function CoinsPage() {
   const [coinsToConvert, setCoinsToConvert] = useState(MIN_COINS_TO_CONVERT);
   const [cooldown, setCooldown] = useState(0);
   const [networkAdsWatched, setNetworkAdsWatched] = useState<Record<string, number>>({});
+  const [redeemCodeInput, setRedeemCodeInput] = useState("");
+  
+  const { redeemCode, redeeming } = useRedeemCode();
 
   // Load ads watched from localStorage
   useEffect(() => {
@@ -159,6 +164,21 @@ export default function CoinsPage() {
     }
   };
 
+  const handleRedeemCode = async () => {
+    if (!requireAuth('redeem a code')) return;
+    if (!user?.id) return;
+
+    await redeemCode(redeemCodeInput, user.id, async (rewardType, amount) => {
+      if (rewardType === 'coins') {
+        await addCoins(amount);
+      } else {
+        const newBalance = (userData?.balance || 0) + amount;
+        await updateBalance(newBalance);
+      }
+    });
+    setRedeemCodeInput("");
+  };
+
   if (loading) {
     return (
       <AppLayout title="Earn Coins">
@@ -187,6 +207,30 @@ export default function CoinsPage() {
               <span className="text-lg font-bold">{user ? coins : "---"}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">Coins</p>
+          </div>
+        </div>
+
+        {/* Redeem Code Section */}
+        <div className="bg-card rounded-xl p-3 border border-border/50">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Ticket className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold">Redeem Code</h2>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter code"
+              value={redeemCodeInput}
+              onChange={(e) => setRedeemCodeInput(e.target.value.toUpperCase())}
+              className="flex-1 h-9 text-sm uppercase"
+              disabled={redeeming || !user}
+            />
+            <Button
+              onClick={handleRedeemCode}
+              disabled={redeeming || !redeemCodeInput.trim() || !user}
+              className="h-9 px-4 text-sm"
+            >
+              {redeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
+            </Button>
           </div>
         </div>
 
