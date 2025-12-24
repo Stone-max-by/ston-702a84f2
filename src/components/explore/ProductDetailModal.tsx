@@ -90,15 +90,23 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="bottom" className="bg-card border-white/10 h-[75vh] rounded-t-2xl !p-0">
         <div className="flex flex-col h-full">
-          <SheetHeader className="px-3 pt-3 pb-2 border-b border-white/5">
-            <SheetTitle className="flex items-center gap-2 pr-8">
-              <Button variant="ghost" size="icon" onClick={handleShare} className="shrink-0 h-7 w-7">
-                {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Share2 className="w-3.5 h-3.5" />}
-              </Button>
-              <div className="flex items-center gap-1.5 text-foreground flex-1 min-w-0">
-                <span className="text-sm">{productTypeIcons[product.type]}</span>
-                <span className="text-xs font-semibold truncate">{product.title}</span>
+          {/* Header with drag indicator */}
+          <div className="flex flex-col items-center pt-2 pb-1">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          </div>
+          
+          <SheetHeader className="px-4 pb-2">
+            <SheetTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-foreground flex-1 min-w-0">
+                <span className="text-base">{productTypeIcons[product.type]}</span>
+                <span className="text-sm font-semibold truncate">{product.title}</span>
               </div>
+              <button 
+                onClick={handleShare} 
+                className="shrink-0 w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4 text-success" /> : <Share2 className="w-4 h-4 text-muted-foreground" />}
+              </button>
             </SheetTitle>
           </SheetHeader>
 
