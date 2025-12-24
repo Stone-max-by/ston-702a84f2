@@ -13,6 +13,8 @@ export interface ReferralData {
   referredBy?: string;
   referralCount: number;
   referralEarnings: number;
+  channelJoined?: boolean; // Whether this user has joined the required channel
+  rewardClaimed?: boolean; // Whether this user's referrer has claimed the reward
 }
 
 export interface UserApiKey {
