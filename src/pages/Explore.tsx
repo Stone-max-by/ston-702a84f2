@@ -2,10 +2,9 @@ import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useProducts } from "@/hooks/useProducts";
 import { Product, ProductType, productTypeLabels, productTypeIcons } from "@/types/product";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { GameCardGrid } from "@/components/games/GameCardGrid";
-import { SearchBar } from "@/components/games/SearchBar";
-import { FilterBar } from "@/components/games/FilterBar";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProductDetailModal } from "@/components/explore/ProductDetailModal";
 import { cn } from "@/lib/utils";
@@ -100,25 +99,30 @@ export default function Explore() {
     <AppLayout title="Explore">
       <div className="space-y-4">
         {/* Search */}
-        <SearchBar value={search} onChange={handleSearchChange} />
-
-        {/* Filter Bar */}
-        <FilterBar gamesCount={filteredProducts.length} />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search products..."
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10 bg-muted/30 border-border/50"
+          />
+        </div>
 
         {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
           <button
             onClick={() => handleCategoryChange("all")}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
               selectedCategory === "all"
                 ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                : "bg-muted/50 text-muted-foreground hover:bg-muted"
             )}
           >
             <span>🔥</span>
             <span>All</span>
-            <span className="text-xs opacity-70">({categoryCounts.all})</span>
+            <span className="opacity-70">({categoryCounts.all})</span>
           </button>
           
           {availableCategories.map((type) => (
@@ -126,18 +130,23 @@ export default function Explore() {
               key={type}
               onClick={() => handleCategoryChange(type)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
                 selectedCategory === type
                   ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted"
               )}
             >
               <span>{productTypeIcons[type]}</span>
               <span>{productTypeLabels[type]}</span>
-              <span className="text-xs opacity-70">({categoryCounts[type]})</span>
+              <span className="opacity-70">({categoryCounts[type]})</span>
             </button>
           ))}
         </div>
+
+        {/* Results Count */}
+        <p className="text-sm text-muted-foreground">
+          {filteredProducts.length} products found
+        </p>
 
         {/* Products */}
         {filteredProducts.length === 0 ? (
