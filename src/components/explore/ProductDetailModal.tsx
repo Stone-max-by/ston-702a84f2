@@ -11,6 +11,7 @@ import {
   FileArchive,
   Globe,
   Monitor,
+  Star,
   Share2,
   Clock,
   Play,
@@ -23,7 +24,6 @@ import { Product, productTypeLabels, productTypeIcons } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useUserData } from "@/hooks/useUserData";
 import { toast } from "@/hooks/use-toast";
-import { StarRating } from "@/components/shared/StarRating";
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -36,7 +36,6 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
   const { coins, updateCoins, addPurchasedFile, hasFile } = useUserData();
   const [purchasing, setPurchasing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [userRating, setUserRating] = useState(0);
 
   if (!product) return null;
 
@@ -87,10 +86,6 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
     toast({ title: "Link Copied" });
   };
 
-  const handleRating = (rating: number) => {
-    setUserRating(rating);
-    toast({ title: "Rating Submitted", description: `You rated ${product.title} ${rating} stars` });
-  };
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -153,16 +148,10 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
                 <Heart className="w-3 h-3" />{product.likes}
               </span>
               {product.rating && (
-                <div className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded">
-                  <StarRating value={product.rating} readonly size="sm" showValue />
-                </div>
+                <span className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded">
+                  <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />{product.rating.toFixed(1)}
+                </span>
               )}
-            </div>
-
-            {/* User Rating */}
-            <div className="bg-background rounded-lg p-3 border border-white/5">
-              <h4 className="text-xs font-semibold text-foreground mb-2">Rate this Product</h4>
-              <StarRating value={userRating} onChange={handleRating} size="md" />
             </div>
 
             {/* Description */}
