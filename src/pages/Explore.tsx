@@ -7,6 +7,7 @@ import { GameCardGrid } from "@/components/games/GameCardGrid";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProductDetailModal } from "@/components/explore/ProductDetailModal";
+import { FilterSheet, SortOption } from "@/components/shared/FilterSheet";
 import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
@@ -24,6 +25,7 @@ const PRODUCT_TYPES: ProductType[] = [
 export default function Explore() {
   const [selectedCategory, setSelectedCategory] = useState<ProductType | "all">("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products, loading } = useProducts();
@@ -66,7 +68,7 @@ export default function Explore() {
     return counts;
   }, [visibleProducts]);
 
-  // Filter products by selected category and search
+  // Filter and sort products
   const filteredProducts = useMemo(() => {
     let filtered = selectedCategory === "all" 
       ? visibleProducts 
@@ -78,9 +80,29 @@ export default function Explore() {
         product.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
       );
     }
+
+    // Sort products
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "oldest":
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "popular":
+          return (b.views || 0) - (a.views || 0);
+        case "downloads":
+          return (b.downloads || 0) - (a.downloads || 0);
+        case "price_low":
+          return (a.priceUSD || 0) - (b.priceUSD || 0);
+        case "price_high":
+          return (b.priceUSD || 0) - (a.priceUSD || 0);
+        default:
+          return 0;
+      }
+    });
     
-    return filtered;
-  }, [selectedCategory, visibleProducts, search]);
+    return sorted;
+  }, [selectedCategory, visibleProducts, search, sortBy]);
 
   // Categories with at least one product
   const availableCategories = PRODUCT_TYPES.filter(type => categoryCounts[type] > 0);
@@ -143,10 +165,13 @@ export default function Explore() {
           ))}
         </div>
 
-        {/* Results Count */}
-        <p className="text-sm text-muted-foreground">
-          {filteredProducts.length} products found
-        </p>
+        {/* Filter & Results Count */}
+        <FilterSheet
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          resultCount={filteredProducts.length}
+          showPriceSort={true}
+        />
 
         {/* Products */}
         {filteredProducts.length === 0 ? (
