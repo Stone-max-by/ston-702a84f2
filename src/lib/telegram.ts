@@ -21,6 +21,7 @@ declare global {
         expand: () => void;
         close: () => void;
         isExpanded: boolean;
+        isFullscreen: boolean;
         viewportHeight: number;
         viewportStableHeight: number;
         headerColor: string;
@@ -29,6 +30,12 @@ declare global {
         setBackgroundColor: (color: string) => void;
         enableClosingConfirmation: () => void;
         disableClosingConfirmation: () => void;
+        requestFullscreen: () => void;
+        exitFullscreen: () => void;
+        lockOrientation: () => void;
+        unlockOrientation: () => void;
+        disableVerticalSwipes: () => void;
+        enableVerticalSwipes: () => void;
         MainButton: {
           text: string;
           color: string;
@@ -100,8 +107,53 @@ export const initTelegramWebApp = () => {
     console.log('Initializing Telegram WebApp');
     webApp.ready();
     webApp.expand();
+    
     // Set theme colors to match app
     webApp.setHeaderColor('#000000');
     webApp.setBackgroundColor('#000000');
+    
+    // Request fullscreen mode (hides Telegram header)
+    try {
+      if (typeof webApp.requestFullscreen === 'function') {
+        webApp.requestFullscreen();
+      }
+    } catch (e) {
+      console.log('Fullscreen not supported:', e);
+    }
+    
+    // Disable vertical swipes to prevent accidental close
+    try {
+      if (typeof webApp.disableVerticalSwipes === 'function') {
+        webApp.disableVerticalSwipes();
+      }
+    } catch (e) {
+      console.log('Disable vertical swipes not supported:', e);
+    }
+  }
+};
+
+export const requestTelegramFullscreen = () => {
+  const webApp = getTelegramWebApp();
+  if (webApp) {
+    try {
+      if (typeof webApp.requestFullscreen === 'function') {
+        webApp.requestFullscreen();
+      }
+    } catch (e) {
+      console.log('Fullscreen not supported:', e);
+    }
+  }
+};
+
+export const exitTelegramFullscreen = () => {
+  const webApp = getTelegramWebApp();
+  if (webApp) {
+    try {
+      if (typeof webApp.exitFullscreen === 'function') {
+        webApp.exitFullscreen();
+      }
+    } catch (e) {
+      console.log('Exit fullscreen not supported:', e);
+    }
   }
 };
