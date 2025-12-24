@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Bot, Search, Sparkles, TrendingUp, Clock, Filter } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Bot, Search, Sparkles, TrendingUp, Clock } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { BotDetailModal } from "@/components/bots/BotDetailModal";
 import { BotPurchaseModal } from "@/components/bots/BotPurchaseModal";
 import { useBots } from "@/hooks/useBots";
 import { TelegramBot } from "@/types/bot";
+import { FilterSheet, SortOption } from "@/components/shared/FilterSheet";
 import { cn } from "@/lib/utils";
 
 const categories = [
@@ -21,16 +22,41 @@ export default function BotMarketplace() {
   const { bots, loading, error } = useBots();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [selectedBot, setSelectedBot] = useState<TelegramBot | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
 
-  const filteredBots = bots.filter(bot => {
-    const matchesSearch = bot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bot.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || bot.category.toLowerCase() === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredBots = useMemo(() => {
+    let filtered = bots.filter(bot => {
+      const matchesSearch = bot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bot.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || bot.category.toLowerCase() === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+
+    // Sort bots
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        case "oldest":
+          return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        case "popular":
+          return (b.totalSales || 0) - (a.totalSales || 0);
+        case "downloads":
+          return (b.totalSales || 0) - (a.totalSales || 0);
+        case "price_low":
+          return (a.price || 0) - (b.price || 0);
+        case "price_high":
+          return (b.price || 0) - (a.price || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [bots, searchQuery, selectedCategory, sortBy]);
 
   const handleBotClick = (bot: TelegramBot) => {
     setSelectedBot(bot);
@@ -106,16 +132,13 @@ export default function BotMarketplace() {
           </div>
         </div>
 
-        {/* Results */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {filteredBots.length} bots found
-          </p>
-          <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <Filter className="w-3.5 h-3.5" />
-            Filter
-          </button>
-        </div>
+        {/* Filter & Results */}
+        <FilterSheet
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          resultCount={filteredBots.length}
+          showPriceSort={true}
+        />
 
         {/* Bot Grid */}
         {loading ? (
