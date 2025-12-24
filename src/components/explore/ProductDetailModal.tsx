@@ -88,7 +88,7 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="bg-card border-white/10 h-[75vh] rounded-t-2xl p-0">
+      <SheetContent side="bottom" className="bg-card border-white/10 h-[75vh] rounded-t-2xl !p-0">
         <div className="flex flex-col h-full">
           <SheetHeader className="px-3 pt-3 pb-2 border-b border-white/5">
             <SheetTitle className="flex items-center gap-2 pr-8">
