@@ -1,6 +1,7 @@
 import { Download, Folder } from "lucide-react";
 import type { Game } from "@/data/mockGames";
 import type { Product } from "@/types/product";
+import productPlaceholder from "@/assets/product-placeholder.png";
 
 type CardItem = Game | Product;
 
@@ -41,12 +42,12 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
     >
       <div className="relative aspect-[4/3] bg-muted">
         <img
-          src={game.thumbnail || "/placeholder.svg"}
+          src={game.thumbnail || productPlaceholder}
           alt={game.title}
           className="w-full h-full object-cover"
           loading="lazy"
           onError={(e) => {
-            e.currentTarget.src = "/placeholder.svg";
+            e.currentTarget.src = productPlaceholder;
           }}
         />
         <div className="absolute top-1.5 left-1.5">

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { TelegramBot } from "@/types/bot";
 import { toast } from "@/hooks/use-toast";
+import botPlaceholder from "@/assets/bot-placeholder.png";
 
 interface BotDetailModalProps {
   bot: TelegramBot | null;
@@ -69,11 +70,11 @@ export function BotDetailModal({ bot, open, onClose, onGetNow }: BotDetailModalP
             {/* Thumbnail */}
             <div className="relative rounded-lg overflow-hidden bg-muted">
               <img 
-                src={bot.image || "/placeholder.svg"} 
+                src={bot.image || botPlaceholder} 
                 alt={bot.name} 
                 className="w-full h-auto max-h-48 object-contain bg-black/20" 
                 onError={(e) => {
-                  e.currentTarget.src = "/placeholder.svg";
+                  e.currentTarget.src = botPlaceholder;
                 }}
               />
               {hasDiscount && (
