@@ -67,11 +67,14 @@ export function BotDetailModal({ bot, open, onClose, onGetNow }: BotDetailModalP
 
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
             {/* Thumbnail */}
-            <div className="relative rounded-lg overflow-hidden bg-background">
+            <div className="relative rounded-lg overflow-hidden bg-muted">
               <img 
-                src={bot.image} 
+                src={bot.image || "/placeholder.svg"} 
                 alt={bot.name} 
                 className="w-full h-auto max-h-48 object-contain bg-black/20" 
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.svg";
+                }}
               />
               {hasDiscount && (
                 <Badge className="absolute top-2 right-2 bg-destructive/90 text-destructive-foreground text-xs">
