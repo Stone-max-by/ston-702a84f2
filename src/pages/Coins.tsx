@@ -2,7 +2,12 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Coins, Play, Gift, CheckCircle, Clock, Sparkles, Loader2, ArrowRightLeft, Wallet, Minus, Plus, Timer, Ticket, Flame, Users, Copy, Check, TrendingUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Coins, Play, Gift, CheckCircle, Clock, Sparkles, Loader2, 
+  ArrowRightLeft, Wallet, Minus, Plus, Ticket, Flame, Users, 
+  Copy, Check, TrendingUp, Zap 
+} from "lucide-react";
 import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,7 +53,6 @@ const isConsecutiveDay = (lastDate: string, today: string) => {
 };
 
 export default function CoinsPage() {
-  // Use single source of truth - useUserData for all balance/coins operations
   const { 
     userData,
     loading,
@@ -69,7 +73,6 @@ export default function CoinsPage() {
   const { requireAuth } = useRequireAuth();
   const { user } = useAuth();
   
-  // Derived state
   const canClaimBonus = adRewards.adsWatchedToday >= maxAdsPerDay && !adRewards.bonusClaimed;
   
   const [watchingAd, setWatchingAd] = useState<string | null>(null);
@@ -81,7 +84,6 @@ export default function CoinsPage() {
   const [redeemCodeInput, setRedeemCodeInput] = useState("");
   const [copied, setCopied] = useState(false);
   
-  // Streak state
   const [streakData, setStreakData] = useState({ currentStreak: 0, lastClaimDate: "", claimedToday: false });
   const [claimingStreak, setClaimingStreak] = useState(false);
   
@@ -94,13 +96,11 @@ export default function CoinsPage() {
       const data = JSON.parse(stored);
       const today = getTodayKey();
       
-      // Check if streak is still valid
       if (data.lastClaimDate === today) {
         setStreakData({ ...data, claimedToday: true });
       } else if (isConsecutiveDay(data.lastClaimDate, today)) {
         setStreakData({ ...data, claimedToday: false });
       } else if (data.lastClaimDate !== today) {
-        // Streak broken, reset to 0
         setStreakData({ currentStreak: 0, lastClaimDate: "", claimedToday: false });
       }
     }
@@ -141,7 +141,6 @@ export default function CoinsPage() {
   };
 
   const getNetworkAdsWatched = (networkId: string) => networkAdsWatched[networkId] || 0;
-  
   const getTotalAdsWatched = () => Object.values(networkAdsWatched).reduce((a, b) => a + b, 0);
 
   const maxConvertibleCoins = Math.floor(coins / COINS_PER_RUPEE) * COINS_PER_RUPEE;
@@ -166,19 +165,13 @@ export default function CoinsPage() {
 
     setWatchingAd(networkId);
     
-    // Simulate ad watching (integrate actual SDK here)
     setTimeout(async () => {
       const success = await recordAdWatch();
       if (success) {
         await addCoins(networkCoins);
-        
-        // Update network-specific count
         const newData = { ...networkAdsWatched, [networkId]: networkWatched + 1 };
         saveAdsWatched(newData);
-        
         toast.success(`+${networkCoins} coins!`);
-        
-        // Start cooldown for this network only
         setNetworkCooldowns(prev => ({ ...prev, [networkId]: COOLDOWN_SECONDS }));
       }
       setWatchingAd(null);
@@ -198,7 +191,7 @@ export default function CoinsPage() {
     await addCoins(reward);
     
     const newData = {
-      currentStreak: newStreak > 7 ? 1 : newStreak, // Reset after 7 days
+      currentStreak: newStreak > 7 ? 1 : newStreak,
       lastClaimDate: today,
       claimedToday: true,
     };
@@ -241,12 +234,9 @@ export default function CoinsPage() {
     setConverting(true);
     try {
       const addedBalance = coinsToConvert / COINS_PER_RUPEE;
-      
-      // Deduct coins and add balance using useUserData functions
       await addCoins(-coinsToConvert);
       await addBalance(addedBalance);
       
-      // Add transaction record
       await addTransaction({
         type: "coin_earning",
         amount: addedBalance,
@@ -285,7 +275,7 @@ export default function CoinsPage() {
 
   if (loading) {
     return (
-      <AppLayout title="Earn Coins">
+      <AppLayout title="Coins">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
@@ -294,342 +284,402 @@ export default function CoinsPage() {
   }
 
   return (
-    <AppLayout title="Earn Coins">
+    <AppLayout title="Coins">
       <div className="space-y-4 pb-6">
-        {/* Balance & Coins - Compact */}
-        <div className="flex gap-2">
-          <div className="flex-1 bg-success/10 rounded-lg p-3 border border-success/20">
-            <div className="flex items-center gap-1.5 text-success">
-              <Wallet className="w-4 h-4" />
-              <span className="text-lg font-bold">{user ? `₹${balance}` : "---"}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Balance</p>
-          </div>
-          <div className="flex-1 bg-yellow-500/10 rounded-lg p-3 border border-yellow-500/20">
-            <div className="flex items-center gap-1.5 text-yellow-500">
-              <Coins className="w-4 h-4" />
-              <span className="text-lg font-bold">{user ? coins : "---"}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Coins</p>
-          </div>
-        </div>
-
-        {/* Daily Streak Section */}
-        {user && (
-          <div className="bg-card rounded-xl p-3 border border-border/50">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5">
-                <Flame className="w-4 h-4 text-orange-500" />
-                <h2 className="text-sm font-semibold">Daily Streak</h2>
+        {/* Balance Header - Always Visible */}
+        <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-2xl p-4 border border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
+                <Coins className="w-6 h-6 text-yellow-500" />
               </div>
-              <div className="flex items-center gap-1 text-orange-500">
-                <Flame className="w-3 h-3" />
-                <span className="text-xs font-bold">{streakData.currentStreak} days</span>
+              <div>
+                <p className="text-2xl font-bold">{user ? coins : "---"}</p>
+                <p className="text-xs text-muted-foreground">Total Coins</p>
               </div>
             </div>
-            
-            {/* Streak Days */}
-            <div className="flex gap-1 mb-3">
-              {STREAK_REWARDS.map((reward, index) => {
-                const dayNum = index + 1;
-                const isCompleted = streakData.currentStreak >= dayNum || (streakData.claimedToday && streakData.currentStreak === dayNum);
-                const isCurrent = !streakData.claimedToday && streakData.currentStreak + 1 === dayNum;
-                
-                return (
-                  <div
-                    key={dayNum}
-                    className={`flex-1 p-1.5 rounded-lg text-center border ${
-                      isCompleted 
-                        ? 'bg-orange-500/20 border-orange-500/30' 
-                        : isCurrent 
-                          ? 'bg-primary/20 border-primary/30 animate-pulse' 
-                          : 'bg-muted/30 border-border/30'
-                    }`}
-                  >
-                    <p className={`text-[9px] font-medium ${isCompleted ? 'text-orange-500' : isCurrent ? 'text-primary' : 'text-muted-foreground'}`}>
-                      D{dayNum}
-                    </p>
-                    <p className={`text-[10px] font-bold ${isCompleted ? 'text-orange-400' : isCurrent ? 'text-primary' : 'text-foreground'}`}>
-                      +{reward.coins}
-                    </p>
-                    {isCompleted && <CheckCircle className="w-2.5 h-2.5 mx-auto text-orange-500" />}
-                  </div>
-                );
-              })}
-            </div>
-            
-            <Button
-              onClick={handleClaimStreak}
-              disabled={claimingStreak || streakData.claimedToday || !user}
-              className="w-full h-9 text-sm"
-              variant={streakData.claimedToday ? "outline" : "default"}
-            >
-              {claimingStreak ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : streakData.claimedToday ? (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-1.5" />
-                  Claimed Today
-                </>
-              ) : (
-                <>
-                  <Gift className="w-4 h-4 mr-1.5" />
-                  Claim Day {Math.min(streakData.currentStreak + 1, 7)} Reward
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-
-        {/* Referral Earnings Section */}
-        {user && (
-          <div className="bg-card rounded-xl p-3 border border-border/50">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-primary" />
-                <h2 className="text-sm font-semibold">Referral Earnings</h2>
-              </div>
+            <div className="text-right">
               <div className="flex items-center gap-1 text-success">
-                <TrendingUp className="w-3 h-3" />
-                <span className="text-xs font-bold">₹{referral.referralEarnings || 0}</span>
+                <Wallet className="w-4 h-4" />
+                <span className="text-lg font-bold">₹{user ? balance : "---"}</span>
               </div>
+              <p className="text-[10px] text-muted-foreground">Wallet Balance</p>
             </div>
-            
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="bg-muted/30 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-foreground">{referral.referralCount || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Total Referrals</p>
-              </div>
-              <div className="bg-success/10 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-success">₹{referral.referralEarnings || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Total Earned</p>
-              </div>
-            </div>
-            
-            {/* Referral Code */}
-            <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg mb-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-muted-foreground">Your Code</p>
-                <p className="text-sm font-mono font-bold truncate">{referral.referralCode || "---"}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyReferralLink}
-                disabled={!referral.referralCode}
-                className="h-8 px-3"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            </div>
-            
-            <p className="text-[10px] text-muted-foreground text-center">
-              Earn ₹ when friends join via your link & verify channel
-            </p>
-          </div>
-        )}
-
-        {/* Redeem Code Section */}
-        <div className="bg-card rounded-xl p-3 border border-border/50">
-          <div className="flex items-center gap-1.5 mb-3">
-            <Ticket className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-semibold">Redeem Code</h2>
-          </div>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter code"
-              value={redeemCodeInput}
-              onChange={(e) => setRedeemCodeInput(e.target.value.toUpperCase())}
-              className="flex-1 h-9 text-sm uppercase"
-              disabled={redeeming || !user}
-            />
-            <Button
-              onClick={handleRedeemCode}
-              disabled={redeeming || !redeemCodeInput.trim() || !user}
-              className="h-9 px-4 text-sm"
-            >
-              {redeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
-            </Button>
           </div>
         </div>
 
-        {/* Watch Ads Section */}
-        <div className="bg-card rounded-xl p-3 border border-border/50">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5">
-              <Play className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-semibold">Watch Ads</h2>
-            </div>
-            <span className="text-xs text-muted-foreground">{getTotalAdsWatched()}/{AD_NETWORKS.length * MAX_ADS_PER_NETWORK}</span>
-          </div>
+        {/* Tabs */}
+        <Tabs defaultValue="earn" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 h-10">
+            <TabsTrigger value="earn" className="text-xs gap-1">
+              <Zap className="w-3.5 h-3.5" />
+              Earn
+            </TabsTrigger>
+            <TabsTrigger value="wallet" className="text-xs gap-1">
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              Convert
+            </TabsTrigger>
+            <TabsTrigger value="rewards" className="text-xs gap-1">
+              <Gift className="w-3.5 h-3.5" />
+              Rewards
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Ad Networks - List Layout */}
-          <div className="space-y-2">
-            {AD_NETWORKS.map((network) => {
-              const networkWatched = getNetworkAdsWatched(network.id);
-              const isNetworkDone = networkWatched >= MAX_ADS_PER_NETWORK;
-              
-              return (
-                <div
-                  key={network.id}
-                  className={`flex items-center justify-between p-2.5 rounded-lg border ${isNetworkDone ? 'bg-success/5 border-success/20' : 'bg-muted/30 border-border/30'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${network.color} flex items-center justify-center`}>
-                      {isNetworkDone ? (
-                        <CheckCircle className="w-4 h-4 text-white" />
-                      ) : (
-                        <Play className="w-4 h-4 text-white" />
-                      )}
+          {/* EARN TAB */}
+          <TabsContent value="earn" className="space-y-4 mt-4">
+            {/* Daily Streak */}
+            {user && (
+              <div className="bg-card rounded-xl p-4 border border-border/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                      <Flame className="w-4 h-4 text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{network.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {networkWatched}/{MAX_ADS_PER_NETWORK} • +{network.coins} coins
-                      </p>
+                      <h3 className="text-sm font-semibold">Daily Streak</h3>
+                      <p className="text-[10px] text-muted-foreground">{streakData.currentStreak} day streak</p>
                     </div>
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => handleWatchAd(network.id, network.coins)}
-                    disabled={watchingAd !== null || isNetworkDone || getNetworkCooldown(network.id) > 0 || !user}
-                    className="h-8 px-4 text-xs"
-                    variant={isNetworkDone ? "outline" : "default"}
+                    onClick={handleClaimStreak}
+                    disabled={claimingStreak || streakData.claimedToday || !user}
+                    variant={streakData.claimedToday ? "outline" : "default"}
+                    className="h-8"
                   >
-                    {watchingAd === network.id ? (
-                      <Clock className="w-3.5 h-3.5 animate-spin" />
-                    ) : isNetworkDone ? (
-                      "Done"
-                    ) : getNetworkCooldown(network.id) > 0 ? (
-                      `${getNetworkCooldown(network.id)}s`
+                    {claimingStreak ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : streakData.claimedToday ? (
+                      <><CheckCircle className="w-3.5 h-3.5 mr-1" /> Claimed</>
                     ) : (
-                      "Watch"
+                      <>Claim +{STREAK_REWARDS[Math.min(streakData.currentStreak, 6)].coins}</>
                     )}
                   </Button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                
+                {/* Streak Days Progress */}
+                <div className="flex gap-1">
+                  {STREAK_REWARDS.map((reward, index) => {
+                    const dayNum = index + 1;
+                    const isCompleted = streakData.currentStreak >= dayNum || (streakData.claimedToday && streakData.currentStreak === dayNum);
+                    const isCurrent = !streakData.claimedToday && streakData.currentStreak + 1 === dayNum;
+                    
+                    return (
+                      <div
+                        key={dayNum}
+                        className={`flex-1 py-1.5 rounded-lg text-center border transition-all ${
+                          isCompleted 
+                            ? 'bg-orange-500/20 border-orange-500/40' 
+                            : isCurrent 
+                              ? 'bg-primary/20 border-primary/40 ring-1 ring-primary/30' 
+                              : 'bg-muted/30 border-border/30'
+                        }`}
+                      >
+                        <p className={`text-[9px] font-medium ${isCompleted ? 'text-orange-500' : isCurrent ? 'text-primary' : 'text-muted-foreground'}`}>
+                          D{dayNum}
+                        </p>
+                        <p className={`text-[10px] font-bold ${isCompleted ? 'text-orange-400' : isCurrent ? 'text-primary' : 'text-foreground/70'}`}>
+                          +{reward.coins}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-        {/* Daily Bonus - Compact */}
-        {canClaimBonus && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-warning/20 to-success/20 border border-warning/30">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-warning" />
-              <div>
-                <p className="text-xs font-semibold">Daily Bonus!</p>
-                <p className="text-[10px] text-muted-foreground">All {AD_NETWORKS.length * MAX_ADS_PER_NETWORK} ads watched</p>
+            {/* Watch Ads Section */}
+            <div className="bg-card rounded-xl p-4 border border-border/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                    <Play className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">Watch Ads</h3>
+                    <p className="text-[10px] text-muted-foreground">
+                      {getTotalAdsWatched()}/{AD_NETWORKS.length * MAX_ADS_PER_NETWORK} watched
+                    </p>
+                  </div>
+                </div>
+                {canClaimBonus && (
+                  <Button 
+                    size="sm" 
+                    onClick={handleClaimBonus}
+                    disabled={claimingBonus}
+                    className="h-8 bg-gradient-to-r from-warning to-success text-white"
+                  >
+                    {claimingBonus ? <Loader2 className="w-4 h-4 animate-spin" /> : `Bonus +${dailyBonusAmount}`}
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {AD_NETWORKS.map((network) => {
+                  const networkWatched = getNetworkAdsWatched(network.id);
+                  const isNetworkDone = networkWatched >= MAX_ADS_PER_NETWORK;
+                  const cooldown = getNetworkCooldown(network.id);
+                  
+                  return (
+                    <div
+                      key={network.id}
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                        isNetworkDone 
+                          ? 'bg-success/5 border-success/20' 
+                          : 'bg-muted/20 border-border/30 hover:border-primary/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${network.color} flex items-center justify-center shadow-lg`}>
+                          {isNetworkDone ? (
+                            <CheckCircle className="w-5 h-5 text-white" />
+                          ) : (
+                            <Play className="w-5 h-5 text-white" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{network.name}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground">
+                              {networkWatched}/{MAX_ADS_PER_NETWORK}
+                            </span>
+                            <span className="text-[10px] text-primary font-medium">
+                              +{network.coins} coins
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleWatchAd(network.id, network.coins)}
+                        disabled={watchingAd !== null || isNetworkDone || cooldown > 0 || !user}
+                        variant={isNetworkDone ? "outline" : "default"}
+                        className="h-9 px-4"
+                      >
+                        {watchingAd === network.id ? (
+                          <Clock className="w-4 h-4 animate-spin" />
+                        ) : isNetworkDone ? (
+                          "Done"
+                        ) : cooldown > 0 ? (
+                          `${cooldown}s`
+                        ) : (
+                          "Watch"
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <Button 
-              size="sm" 
-              onClick={handleClaimBonus}
-              disabled={claimingBonus}
-              className="h-7 text-xs bg-warning text-warning-foreground hover:bg-warning/90"
-            >
-              {claimingBonus ? "..." : `+${dailyBonusAmount}`}
-            </Button>
-          </div>
-        )}
+          </TabsContent>
 
-        {/* Convert Coins - Compact */}
-        {user && coins >= MIN_COINS_TO_CONVERT && (
-          <div className="bg-card rounded-xl p-3 border border-border/50">
-            <div className="flex items-center gap-1.5 mb-3">
-              <ArrowRightLeft className="w-4 h-4 text-primary" />
-              <h2 className="text-sm font-semibold">Convert to Balance</h2>
-              <span className="text-[10px] text-muted-foreground ml-auto">{COINS_PER_RUPEE}:₹1</span>
-            </div>
-            
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => adjustCoins(-10)}
-                disabled={coinsToConvert <= MIN_COINS_TO_CONVERT}
-                className="h-8 w-8"
-              >
-                <Minus className="w-3 h-3" />
-              </Button>
-              
-              <div className="flex-1 text-center">
-                <p className="text-xl font-bold">{coinsToConvert}</p>
-                <p className="text-[10px] text-muted-foreground">= ₹{balanceToReceive}</p>
+          {/* CONVERT TAB */}
+          <TabsContent value="wallet" className="space-y-4 mt-4">
+            {/* Convert Section */}
+            <div className="bg-card rounded-xl p-4 border border-border/50">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <ArrowRightLeft className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold">Convert to Balance</h3>
+                  <p className="text-[10px] text-muted-foreground">{COINS_PER_RUPEE} coins = ₹1</p>
+                </div>
               </div>
               
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => adjustCoins(10)}
-                disabled={coinsToConvert >= maxConvertibleCoins}
-                className="h-8 w-8"
-              >
-                <Plus className="w-3 h-3" />
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCoinsToConvert(maxConvertibleCoins)}
-                className="h-8 text-xs text-primary"
-              >
-                Max
-              </Button>
-            </div>
-            
-            <Button
-              onClick={handleConvertCoins}
-              disabled={converting || coinsToConvert < MIN_COINS_TO_CONVERT}
-              className="w-full h-9 text-sm"
-            >
-              {converting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+              {user && coins >= MIN_COINS_TO_CONVERT ? (
+                <>
+                  <div className="flex items-center justify-between gap-3 mb-4 p-3 rounded-xl bg-muted/30">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => adjustCoins(-10)}
+                      disabled={coinsToConvert <= MIN_COINS_TO_CONVERT}
+                      className="h-10 w-10"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    
+                    <div className="flex-1 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Coins className="w-5 h-5 text-yellow-500" />
+                        <span className="text-2xl font-bold">{coinsToConvert}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <ArrowRightLeft className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-sm text-success font-medium">₹{balanceToReceive}</span>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => adjustCoins(10)}
+                      disabled={coinsToConvert >= maxConvertibleCoins}
+                      className="h-10 w-10"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex gap-2 mb-4">
+                    {[25, 50, 100].map((percent) => {
+                      const value = Math.floor((maxConvertibleCoins * percent) / 100 / 10) * 10;
+                      if (value < MIN_COINS_TO_CONVERT) return null;
+                      return (
+                        <Button
+                          key={percent}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCoinsToConvert(value)}
+                          className="flex-1 h-8 text-xs"
+                        >
+                          {percent}%
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCoinsToConvert(maxConvertibleCoins)}
+                      className="flex-1 h-8 text-xs text-primary"
+                    >
+                      Max
+                    </Button>
+                  </div>
+                  
+                  <Button
+                    onClick={handleConvertCoins}
+                    disabled={converting || coinsToConvert < MIN_COINS_TO_CONVERT}
+                    className="w-full h-11"
+                  >
+                    {converting ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        <ArrowRightLeft className="w-4 h-4 mr-2" />
+                        Convert to ₹{balanceToReceive}
+                      </>
+                    )}
+                  </Button>
+                </>
               ) : (
-                `Convert to ₹${balanceToReceive}`
+                <div className="text-center py-6">
+                  <Coins className="w-12 h-12 mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">Need at least {MIN_COINS_TO_CONVERT} coins</p>
+                  <p className="text-xs text-muted-foreground/70">Watch ads to earn coins!</p>
+                </div>
               )}
-            </Button>
-          </div>
-        )}
+            </div>
 
-        {/* How It Works - Compact */}
-        <div className="bg-card rounded-xl p-3 border border-border/50">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Gift className="w-4 h-4 text-warning" />
-            <h2 className="text-sm font-semibold">How It Works</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2 rounded-lg bg-muted/30">
-              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-1">
-                <span className="text-xs font-bold text-primary">1</span>
+            {/* Quick Info */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-lg font-bold text-primary">{COINS_PER_RUPEE}</p>
+                <p className="text-[10px] text-muted-foreground">Coins/₹1</p>
               </div>
-              <p className="text-[10px] text-muted-foreground">Watch Ads</p>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/30">
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-1">
-                <span className="text-xs font-bold text-success">2</span>
+              <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-lg font-bold text-success">{MIN_COINS_TO_CONVERT}</p>
+                <p className="text-[10px] text-muted-foreground">Min Convert</p>
               </div>
-              <p className="text-[10px] text-muted-foreground">Earn Coins</p>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/30">
-              <div className="w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center mx-auto mb-1">
-                <span className="text-xs font-bold text-warning">3</span>
+              <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
+                <p className="text-lg font-bold text-yellow-500">{maxConvertibleCoins}</p>
+                <p className="text-[10px] text-muted-foreground">Available</p>
               </div>
-              <p className="text-[10px] text-muted-foreground">Convert ₹</p>
             </div>
-          </div>
-        </div>
+          </TabsContent>
 
-        {/* Bonus Reminder - Compact */}
-        {!canClaimBonus && getTotalAdsWatched() < AD_NETWORKS.length * MAX_ADS_PER_NETWORK && (
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-warning/10 border border-warning/20">
-            <Sparkles className="w-4 h-4 text-warning shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              Watch {(AD_NETWORKS.length * MAX_ADS_PER_NETWORK) - getTotalAdsWatched()} more ads for +{dailyBonusAmount} bonus!
-            </p>
-          </div>
-        )}
+          {/* REWARDS TAB */}
+          <TabsContent value="rewards" className="space-y-4 mt-4">
+            {/* Referral Section */}
+            {user && (
+              <div className="bg-card rounded-xl p-4 border border-border/50">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold">Referral Program</h3>
+                      <p className="text-[10px] text-muted-foreground">Invite friends & earn</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-success">
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-sm font-bold">₹{referral.referralEarnings || 0}</span>
+                  </div>
+                </div>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-muted/30 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-foreground">{referral.referralCount || 0}</p>
+                    <p className="text-[10px] text-muted-foreground">Total Referrals</p>
+                  </div>
+                  <div className="bg-success/10 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-success">₹{referral.referralEarnings || 0}</p>
+                    <p className="text-[10px] text-muted-foreground">Earnings</p>
+                  </div>
+                </div>
+                
+                {/* Referral Code */}
+                <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-muted-foreground mb-0.5">Your Referral Code</p>
+                    <p className="text-sm font-mono font-bold truncate">{referral.referralCode || "---"}</p>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={copyReferralLink}
+                    disabled={!referral.referralCode}
+                    className="h-9 px-4"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <><Copy className="w-4 h-4 mr-1" /> Copy</>}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Redeem Code */}
+            <div className="bg-card rounded-xl p-4 border border-border/50">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-warning/20 flex items-center justify-center">
+                  <Ticket className="w-4 h-4 text-warning" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold">Redeem Code</h3>
+                  <p className="text-[10px] text-muted-foreground">Enter promo code</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter code"
+                  value={redeemCodeInput}
+                  onChange={(e) => setRedeemCodeInput(e.target.value.toUpperCase())}
+                  className="flex-1 h-11 uppercase font-mono"
+                  disabled={redeeming || !user}
+                />
+                <Button
+                  onClick={handleRedeemCode}
+                  disabled={redeeming || !redeemCodeInput.trim() || !user}
+                  className="h-11 px-6"
+                >
+                  {redeeming ? <Loader2 className="w-5 h-5 animate-spin" /> : "Apply"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Login Prompt for non-users */}
+            {!user && (
+              <div className="bg-muted/30 rounded-xl p-6 text-center border border-border/50">
+                <Gift className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-sm text-muted-foreground">Login to access rewards</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
