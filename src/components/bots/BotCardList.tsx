@@ -1,5 +1,6 @@
 import { Star, ChevronRight } from "lucide-react";
 import { TelegramBot } from "@/types/bot";
+import botPlaceholder from "@/assets/bot-placeholder.png";
 
 interface BotCardListProps {
   bot: TelegramBot;
@@ -20,12 +21,12 @@ export function BotCardList({ bot, onClick }: BotCardListProps) {
       {/* Image */}
       <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-muted">
         <img
-          src={bot.image || "/placeholder.svg"}
+          src={bot.image || botPlaceholder}
           alt={bot.name}
           className="w-full h-full object-cover"
           loading="lazy"
           onError={(e) => {
-            e.currentTarget.src = "/placeholder.svg";
+            e.currentTarget.src = botPlaceholder;
           }}
         />
         {hasDiscount && (

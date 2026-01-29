@@ -124,16 +124,21 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
 
         {step === 'confirm' && (
           <div className="space-y-4">
-            {/* Bot Preview */}
-            <div className="flex gap-3 p-3 rounded-xl bg-muted/30">
-              <img 
-                src={bot.image} 
-                alt={bot.name}
-                className="w-16 h-16 rounded-lg object-cover"
-              />
+            {/* Bot Preview - only show image if available */}
+            <div className={`flex gap-3 p-3 rounded-xl bg-muted/30 ${!bot.image ? 'items-center' : ''}`}>
+              {bot.image && (
+                <img 
+                  src={bot.image} 
+                  alt={bot.name}
+                  className="w-16 h-16 rounded-lg object-cover shrink-0"
+                />
+              )}
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-sm">{bot.name}</h4>
                 <p className="text-xs text-muted-foreground line-clamp-2">{bot.shortDescription}</p>
+                {!bot.image && (
+                  <p className="text-xs text-primary mt-1">₹{bot.price}</p>
+                )}
               </div>
             </div>
 
