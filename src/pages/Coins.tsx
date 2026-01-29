@@ -622,21 +622,27 @@ export default function CoinsPage() {
                   </div>
                 </div>
                 
-                {/* Referral Code */}
-                <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-muted-foreground mb-0.5">Your Referral Code</p>
-                    <p className="text-sm font-mono font-bold truncate">{referral.referralCode || "---"}</p>
+                {/* Referral Link */}
+                <div className="space-y-2">
+                  <p className="text-[10px] text-muted-foreground">Your Referral Link</p>
+                  <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono truncate text-foreground">
+                        {referral.referralCode 
+                          ? `https://t.me/PyWalletBot?start=${referral.referralCode}` 
+                          : "---"}
+                      </p>
+                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={copyReferralLink}
+                      disabled={!referral.referralCode}
+                      className="h-9 px-4 shrink-0"
+                    >
+                      {copied ? <Check className="w-4 h-4" /> : <><Copy className="w-4 h-4 mr-1" /> Copy</>}
+                    </Button>
                   </div>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={copyReferralLink}
-                    disabled={!referral.referralCode}
-                    className="h-9 px-4"
-                  >
-                    {copied ? <Check className="w-4 h-4" /> : <><Copy className="w-4 h-4 mr-1" /> Copy</>}
-                  </Button>
                 </div>
               </div>
             )}
