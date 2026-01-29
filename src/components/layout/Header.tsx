@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/hooks/useUserData";
 
@@ -15,8 +14,8 @@ interface HeaderProps {
 
 export function Header({ title, showBack, onBack }: HeaderProps) {
   const navigate = useNavigate();
-  const { balance } = useUserApiCredits();
-  const { coins } = useUserData();
+  // Use single source of truth for balance and coins
+  const { balance, coins } = useUserData();
   const { user, signOut, isTelegram } = useAuth();
 
   const displayName = user?.displayName || "Guest";

@@ -40,7 +40,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { requireAuth } = useRequireAuth();
-  const { coins, updateCoins, addPurchasedFile, hasFile, userData } = useUserData();
+  const { coins, addCoins, addPurchasedFile, hasFile, userData } = useUserData();
   const [purchasing, setPurchasing] = useState(false);
 
   const product = products.find((p) => p.slug === slug || p.id === slug);
@@ -92,7 +92,8 @@ const ProductDetail = () => {
     
     try {
       setPurchasing(true);
-      await updateCoins(coins - price);
+      // Use addCoins with negative value to deduct coins
+      await addCoins(-price);
       await addPurchasedFile(product.id);
       toast({
         title: "Purchase Successful!",

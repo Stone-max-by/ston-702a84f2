@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, Check, IndianRupee, QrCode, Sparkles, Wallet } from "lucide-react";
+import { useUserData } from "@/hooks/useUserData";
 import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { toast } from "sonner";
@@ -21,7 +22,9 @@ export default function Deposit() {
   const [step, setStep] = useState<"amount" | "qr" | "success">("amount");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
-  const { addBalance, balance } = useUserApiCredits();
+  // Use single source of truth for balance
+  const { balance, addBalance } = useUserData();
+  const { addTransaction } = useUserApiCredits();
 
   // Check auth on mount
   useEffect(() => {
@@ -61,6 +64,13 @@ export default function Deposit() {
   const handlePaymentReceived = async () => {
     const amount = getFinalAmount();
     await addBalance(amount);
+    // Record the transaction
+    await addTransaction({
+      type: "deposit",
+      amount: amount,
+      description: "Deposit",
+      status: "completed",
+    });
     setStep("success");
     toast.success(`₹${amount} added to your balance!`);
   };
