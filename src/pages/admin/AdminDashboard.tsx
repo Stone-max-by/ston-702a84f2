@@ -1,4 +1,4 @@
-import { Users, Gamepad2, Download, TrendingUp, DollarSign, ShoppingCart, Loader2 } from "lucide-react";
+import { Users, Package, Download, TrendingUp, DollarSign, ShoppingCart, Loader2 } from "lucide-react";
 import { AdminStatCard } from "@/components/admin/AdminStatCard";
 import { ActivityChart } from "@/components/stats/ActivityChart";
 import { userActivityData, downloadActivityData, mockGames } from "@/data/mockGames";
@@ -13,37 +13,39 @@ export default function AdminDashboard() {
   if (statsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Overview of your platform</p>
+        <h1 className="text-lg font-bold text-foreground">Dashboard</h1>
+        <p className="text-xs text-muted-foreground">Platform overview</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <AdminStatCard
-          title="Total Users"
+          title="Users"
           value={stats.totalUsers.toLocaleString()}
           icon={Users}
+          color="primary"
           trend={{ value: 12.5, isPositive: true }}
         />
         <AdminStatCard
           title="Products"
           value={mockGames.length.toString()}
-          icon={Gamepad2}
-          trend={{ value: 3, isPositive: true }}
+          icon={Package}
+          color="success"
         />
         <AdminStatCard
           title="Purchases"
           value={stats.totalPurchases.toLocaleString()}
           icon={ShoppingCart}
-          trend={{ value: 8.2, isPositive: true }}
+          color="warning"
         />
         <AdminStatCard
           title="Transactions"
@@ -55,60 +57,63 @@ export default function AdminDashboard() {
           title="Revenue"
           value={`₹${stats.totalRevenue.toLocaleString()}`}
           icon={DollarSign}
-          trend={{ value: 15.3, isPositive: true }}
+          color="success"
         />
         <AdminStatCard
           title="Growth"
           value="+24%"
           icon={TrendingUp}
+          color="primary"
           subtitle="This month"
         />
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card rounded-xl p-5 border border-white/5">
-          <h3 className="text-sm font-medium text-foreground mb-4">User Activity</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl p-4 border border-border/50">
+          <h3 className="text-sm font-medium text-foreground mb-3">User Activity</h3>
           <ActivityChart data={userActivityData} color="blue" />
         </div>
-        <div className="bg-card rounded-xl p-5 border border-white/5">
-          <h3 className="text-sm font-medium text-foreground mb-4">Download Activity</h3>
+        <div className="bg-card rounded-xl p-4 border border-border/50">
+          <h3 className="text-sm font-medium text-foreground mb-3">Downloads</h3>
           <ActivityChart data={downloadActivityData} color="green" />
         </div>
       </div>
 
       {/* Recent Users */}
-      <div className="bg-card rounded-xl p-5 border border-white/5">
-        <h3 className="text-sm font-medium text-foreground mb-4">Recent Users</h3>
-        <div className="space-y-3">
+      <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border/50">
+          <h3 className="text-sm font-medium text-foreground">Recent Users</h3>
+        </div>
+        <div className="divide-y divide-border/30">
           {usersLoading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : recentUsers.length > 0 ? (
             recentUsers.map((user) => (
               <div
                 key={user.id}
-                className="flex items-center gap-4 p-3 bg-background rounded-lg"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
               >
                 <img
                   src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.telegramId}`}
                   alt={user.displayName}
-                  className="w-10 h-10 rounded-full object-cover bg-white/5"
+                  className="w-8 h-8 rounded-full object-cover bg-muted"
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{user.displayName}</p>
                   <p className="text-xs text-muted-foreground">
-                    @{user.username || user.telegramId} • ₹{user.balance} • {user.coins} coins
+                    ₹{user.balance} • {user.coins} coins
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground shrink-0">
                   {new Date(user.createdAt).toLocaleDateString()}
                 </span>
               </div>
             ))
           ) : (
-            <p className="text-center text-muted-foreground py-4">No users yet</p>
+            <p className="text-center text-sm text-muted-foreground py-6">No users yet</p>
           )}
         </div>
       </div>

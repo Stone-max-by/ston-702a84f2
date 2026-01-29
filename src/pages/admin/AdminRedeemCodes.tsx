@@ -51,72 +51,73 @@ export default function AdminRedeemCodes() {
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
-    toast.success("Code copied!");
+    toast.success("Copied!");
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">Redeem Codes</h1>
-          <p className="text-sm text-muted-foreground">Manage promo codes for coins/balance</p>
+          <h1 className="text-lg font-bold text-foreground">Redeem Codes</h1>
+          <p className="text-xs text-muted-foreground">{codes.length} codes</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Code</span>
+            <Button size="sm" className="gap-1.5 h-8">
+              <Plus className="w-3.5 h-3.5" />
+              Add
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>Create Redeem Code</DialogTitle>
+              <DialogTitle className="text-base">Create Code</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Code</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Code</Label>
                 <div className="flex gap-2">
                   <Input
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                     placeholder="PROMO2024"
-                    className="flex-1 uppercase"
+                    className="flex-1 uppercase h-9 text-sm"
                   />
-                  <Button type="button" variant="outline" onClick={generateRandomCode}>
+                  <Button type="button" variant="outline" size="sm" onClick={generateRandomCode}>
                     Generate
                   </Button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Reward Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Type</Label>
                   <Select
                     value={formData.rewardType}
                     onValueChange={(value: "coins" | "balance") =>
                       setFormData({ ...formData, rewardType: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="coins">Coins</SelectItem>
-                      <SelectItem value="balance">Balance (₹)</SelectItem>
+                      <SelectItem value="balance">Balance ₹</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Amount</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Amount</Label>
                   <Input
                     type="number"
                     value={formData.rewardAmount}
@@ -124,12 +125,13 @@ export default function AdminRedeemCodes() {
                       setFormData({ ...formData, rewardAmount: parseInt(e.target.value) || 0 })
                     }
                     min={1}
+                    className="h-9 text-sm"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Max Uses</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Max Uses</Label>
                 <Input
                   type="number"
                   value={formData.maxUses}
@@ -137,10 +139,11 @@ export default function AdminRedeemCodes() {
                     setFormData({ ...formData, maxUses: parseInt(e.target.value) || 1 })
                   }
                   min={1}
+                  className="h-9 text-sm"
                 />
               </div>
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full h-9 text-sm">
                 Create Code
               </Button>
             </form>
@@ -149,119 +152,102 @@ export default function AdminRedeemCodes() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg p-4 border border-border/50">
-          <p className="text-2xl font-bold text-foreground">{codes.length}</p>
-          <p className="text-xs text-muted-foreground">Total Codes</p>
+      <div className="grid grid-cols-4 gap-2">
+        <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+          <p className="text-lg font-bold text-foreground">{codes.length}</p>
+          <p className="text-[10px] text-muted-foreground">Total</p>
         </div>
-        <div className="bg-card rounded-lg p-4 border border-border/50">
-          <p className="text-2xl font-bold text-success">{codes.filter((c) => c.isActive).length}</p>
-          <p className="text-xs text-muted-foreground">Active</p>
+        <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+          <p className="text-lg font-bold text-success">{codes.filter((c) => c.isActive).length}</p>
+          <p className="text-[10px] text-muted-foreground">Active</p>
         </div>
-        <div className="bg-card rounded-lg p-4 border border-border/50">
-          <p className="text-2xl font-bold text-warning">
+        <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+          <p className="text-lg font-bold text-warning">
             {codes.reduce((sum, c) => sum + c.currentUses, 0)}
           </p>
-          <p className="text-xs text-muted-foreground">Total Uses</p>
+          <p className="text-[10px] text-muted-foreground">Uses</p>
         </div>
-        <div className="bg-card rounded-lg p-4 border border-border/50">
-          <p className="text-2xl font-bold text-primary">
+        <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+          <p className="text-lg font-bold text-primary">
             {codes.reduce((sum, c) => sum + c.rewardAmount * c.currentUses, 0)}
           </p>
-          <p className="text-xs text-muted-foreground">Rewards Given</p>
+          <p className="text-[10px] text-muted-foreground">Given</p>
         </div>
       </div>
 
       {/* Codes List */}
-      <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/30">
-              <tr>
-                <th className="text-left text-xs font-medium text-muted-foreground p-3">Code</th>
-                <th className="text-left text-xs font-medium text-muted-foreground p-3">Reward</th>
-                <th className="text-left text-xs font-medium text-muted-foreground p-3">Uses</th>
-                <th className="text-left text-xs font-medium text-muted-foreground p-3">Status</th>
-                <th className="text-right text-xs font-medium text-muted-foreground p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {codes.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No codes yet. Create one to get started.
-                  </td>
-                </tr>
-              ) : (
-                codes.map((code) => (
-                  <tr key={code.id} className="hover:bg-muted/10">
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Ticket className="w-4 h-4 text-primary" />
-                        <span className="font-mono font-medium">{code.code}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => copyCode(code.code)}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <span className={`text-sm font-medium ${code.rewardType === 'coins' ? 'text-yellow-500' : 'text-success'}`}>
-                        {code.rewardType === 'coins' ? `${code.rewardAmount} coins` : `₹${code.rewardAmount}`}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-1.5 text-sm">
-                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>{code.currentUses}/{code.maxUses}</span>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                          code.isActive
-                            ? "bg-success/20 text-success"
-                            : "bg-destructive/20 text-destructive"
-                        }`}
-                      >
-                        {code.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => toggleCodeStatus(code.id, !code.isActive)}
-                        >
-                          {code.isActive ? (
-                            <ToggleRight className="w-4 h-4 text-success" />
-                          ) : (
-                            <ToggleLeft className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => deleteCode(code.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {codes.length === 0 ? (
+        <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
+          <Ticket className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No codes yet</p>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          {codes.map((code) => (
+            <div
+              key={code.id}
+              className="bg-card rounded-xl border border-border/50 p-3 flex items-center gap-3"
+            >
+              {/* Code & Copy */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold text-sm text-foreground">{code.code}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => copyCode(code.code)}
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`text-xs font-medium ${code.rewardType === 'coins' ? 'text-warning' : 'text-success'}`}>
+                    {code.rewardType === 'coins' ? `${code.rewardAmount} coins` : `₹${code.rewardAmount}`}
+                  </span>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs text-muted-foreground">{code.currentUses}/{code.maxUses} used</span>
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-medium shrink-0 ${
+                  code.isActive
+                    ? "bg-success/20 text-success"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {code.isActive ? "Active" : "Off"}
+              </span>
+
+              {/* Actions */}
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => toggleCodeStatus(code.id, !code.isActive)}
+                >
+                  {code.isActive ? (
+                    <ToggleRight className="w-4 h-4 text-success" />
+                  ) : (
+                    <ToggleLeft className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => deleteCode(code.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
