@@ -10,7 +10,6 @@ import {
   AtSign,
   Loader2,
   Coins,
-  Wallet,
   Package,
   FileText,
   Download,
@@ -29,8 +28,6 @@ export default function Profile() {
     userData,
     loading: dataLoading,
     error: dataError,
-    balance, 
-    coins, 
     purchasedFiles,
     referral, 
   } = useUserData();
@@ -106,17 +103,17 @@ export default function Profile() {
   return (
     <AppLayout title="Profile">
       <div className="space-y-4 pb-20">
-        {/* Profile Header with Balance */}
+        {/* Profile Header */}
         <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-4 border border-primary/20">
-          <div className="flex items-center gap-4 mb-4">
-            <Avatar className="w-14 h-14 border-2 border-primary/30">
+          <div className="flex items-center gap-4">
+            <Avatar className="w-16 h-16 border-2 border-primary/30">
               <AvatarImage src={user?.photoURL} />
-              <AvatarFallback className="bg-primary/20 text-primary text-lg font-bold">
+              <AvatarFallback className="bg-primary/20 text-primary text-xl font-bold">
                 {user?.displayName?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-foreground truncate">
+              <h2 className="text-xl font-bold text-foreground truncate">
                 {user?.displayName || "Guest"}
               </h2>
               {user?.username && (
@@ -125,32 +122,11 @@ export default function Profile() {
                   {user.username}
                 </p>
               )}
-            </div>
-          </div>
-          
-          {/* Balance Row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-background/60 backdrop-blur rounded-xl p-3 border border-border/50">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-success/20 flex items-center justify-center">
-                  <Wallet className="w-4 h-4 text-success" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-foreground">₹{balance}</p>
-                  <p className="text-[10px] text-muted-foreground">Balance</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-background/60 backdrop-blur rounded-xl p-3 border border-border/50">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-                  <Coins className="w-4 h-4 text-yellow-500" />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-foreground">{coins}</p>
-                  <p className="text-[10px] text-muted-foreground">Coins</p>
-                </div>
-              </div>
+              {isTelegram && (
+                <span className="inline-flex items-center text-[10px] px-2 py-0.5 mt-1 rounded-full bg-primary/20 text-primary font-medium">
+                  via Telegram
+                </span>
+              )}
             </div>
           </div>
         </div>
