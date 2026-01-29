@@ -21,7 +21,10 @@ type PurchaseStep = 'confirm' | 'processing' | 'success' | 'failed';
 export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalProps) {
   const [step, setStep] = useState<PurchaseStep>('confirm');
   const [error, setError] = useState<string | null>(null);
-  const { balance, addBalance, addTransaction } = useUserApiCredits();
+  
+  // Use useUserData as single source of truth for balance
+  const { balance, addBalance } = useUserData();
+  const { addTransaction } = useUserApiCredits();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -63,6 +66,9 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
         status: 'pending',
         createdAt: serverTimestamp()
       });
+
+      // Deduct balance from user account
+      await addBalance(-bot.price);
 
       // Add transaction for the purchase
       await addTransaction({

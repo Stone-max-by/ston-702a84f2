@@ -48,19 +48,29 @@ const isConsecutiveDay = (lastDate: string, today: string) => {
 };
 
 export default function CoinsPage() {
+  // Use single source of truth - useUserData for all balance/coins operations
   const { 
-    balance, 
+    userData,
+    loading,
+    balance,
+    coins,
+    addBalance,
     addCoins,
-    dailyBonusAmount,
-    canClaimBonus,
+    referral,
+    adRewards,
     recordAdWatch,
     claimDailyBonus,
-    loading 
-  } = useUserApiCredits();
+    maxAdsPerDay,
+    coinsPerAd,
+    dailyBonusAmount,
+  } = useUserData();
   
-  const { coins, updateCoins, updateBalance, userData, referral } = useUserData();
+  const { addTransaction } = useUserApiCredits();
   const { requireAuth } = useRequireAuth();
   const { user } = useAuth();
+  
+  // Derived state
+  const canClaimBonus = adRewards.adsWatchedToday >= maxAdsPerDay && !adRewards.bonusClaimed;
   
   const [watchingAd, setWatchingAd] = useState<string | null>(null);
   const [claimingBonus, setClaimingBonus] = useState(false);
@@ -230,12 +240,19 @@ export default function CoinsPage() {
 
     setConverting(true);
     try {
-      const newCoins = coins - coinsToConvert;
       const addedBalance = coinsToConvert / COINS_PER_RUPEE;
-      const newBalance = (userData?.balance || 0) + addedBalance;
       
-      await updateCoins(newCoins);
-      await updateBalance(newBalance);
+      // Deduct coins and add balance using useUserData functions
+      await addCoins(-coinsToConvert);
+      await addBalance(addedBalance);
+      
+      // Add transaction record
+      await addTransaction({
+        type: "coin_earning",
+        amount: addedBalance,
+        description: `Converted ${coinsToConvert} coins`,
+        status: "completed",
+      });
       
       toast.success(`₹${addedBalance} added!`);
       setCoinsToConvert(MIN_COINS_TO_CONVERT);
@@ -260,8 +277,7 @@ export default function CoinsPage() {
       if (rewardType === 'coins') {
         await addCoins(amount);
       } else {
-        const newBalance = (userData?.balance || 0) + amount;
-        await updateBalance(newBalance);
+        await addBalance(amount);
       }
     });
     setRedeemCodeInput("");

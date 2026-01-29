@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
+import { useUserData } from "@/hooks/useUserData";
 import { format } from "date-fns";
 import { ArrowDownLeft, Coins, ShoppingCart, Wallet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,12 @@ import { useEffect } from "react";
 
 export default function Transactions() {
   const navigate = useNavigate();
-  const { transactions, balance, loading } = useUserApiCredits();
+  const { transactions, loading: txnLoading } = useUserApiCredits();
+  // Use single source of truth for balance
+  const { balance, loading: userLoading } = useUserData();
   const { user, loading: authLoading } = useAuth();
+  
+  const loading = txnLoading || userLoading;
 
   useEffect(() => {
     if (!authLoading && !user) {
