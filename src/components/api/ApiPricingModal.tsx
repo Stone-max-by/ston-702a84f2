@@ -48,8 +48,8 @@ export function ApiPricingModal({ open, onClose }: ApiPricingModalProps) {
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="h-auto max-h-[85vh] bg-background border-t border-border rounded-t-3xl p-0">
-        <div className="flex flex-col">
+      <SheetContent side="bottom" className="h-[85vh] max-h-[85vh] bg-background border-t border-border rounded-t-3xl p-0">
+        <div className="flex flex-col h-full">
           {/* Header */}
           <SheetHeader className="px-5 pt-5 pb-4">
             <SheetTitle className="text-left">
@@ -63,7 +63,7 @@ export function ApiPricingModal({ open, onClose }: ApiPricingModalProps) {
           </SheetHeader>
 
           {/* Plans */}
-          <div className="px-5 pb-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-3">
             {apiPricingPlans.map((plan) => {
               const isSelected = selectedPlan?.id === plan.id;
               const perRequest = (plan.price / plan.requests).toFixed(2);
@@ -134,7 +134,7 @@ export function ApiPricingModal({ open, onClose }: ApiPricingModalProps) {
           </div>
 
           {/* Purchase Button */}
-          <div className="px-5 pb-5 pt-2">
+          <div className="shrink-0 px-5 pb-5 pt-3 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <Button
               onClick={() => selectedPlan && handlePurchase(selectedPlan)}
               disabled={!selectedPlan || isPurchasing || (selectedPlan && balance < selectedPlan.price)}
