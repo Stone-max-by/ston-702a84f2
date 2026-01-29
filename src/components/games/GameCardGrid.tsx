@@ -39,12 +39,15 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
       onClick={handleCardClick}
       className="glass-card overflow-hidden cursor-pointer animate-fade-in hover:border-primary/30 transition-colors"
     >
-      <div className="relative aspect-[4/3]">
+      <div className="relative aspect-[4/3] bg-muted">
         <img
-          src={game.thumbnail}
+          src={game.thumbnail || "/placeholder.svg"}
           alt={game.title}
           className="w-full h-full object-cover"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src = "/placeholder.svg";
+          }}
         />
         <div className="absolute top-1.5 left-1.5">
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-foreground">{uploader}</span>

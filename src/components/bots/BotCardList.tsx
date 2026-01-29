@@ -18,12 +18,15 @@ export function BotCardList({ bot, onClick }: BotCardListProps) {
       className="glass-card overflow-hidden cursor-pointer animate-fade-in hover:border-primary/30 transition-colors flex gap-3 p-3"
     >
       {/* Image */}
-      <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
+      <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-muted">
         <img
-          src={bot.image}
+          src={bot.image || "/placeholder.svg"}
           alt={bot.name}
           className="w-full h-full object-cover"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src = "/placeholder.svg";
+          }}
         />
         {hasDiscount && (
           <div className="absolute top-1 right-1">
