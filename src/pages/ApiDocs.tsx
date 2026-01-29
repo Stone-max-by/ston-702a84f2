@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useFirestoreApis } from "@/hooks/useFirestoreApis";
 import { ApiEndpoint, ApiProvider } from "@/types/api";
 import { useUserData } from "@/hooks/useUserData";
+import { usePurchases } from "@/hooks/usePurchases";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, differenceInDays, isPast } from "date-fns";
@@ -30,6 +31,7 @@ export default function ApiDocs() {
   const { requireAuth } = useRequireAuth();
   const { user } = useAuth();
   const { providers: apiProviders, loading } = useFirestoreApis();
+  const { activePurchases, remainingRequests, totalRequests, usedRequests } = usePurchases();
 
   const filteredProviders = apiProviders.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -46,11 +48,30 @@ export default function ApiDocs() {
     setShowPricingModal(true);
   };
 
-  // Plan calculations
-  const hasPlan = !!activePlan;
-  const isExpired = activePlan ? isPast(new Date(activePlan.expiryDate)) : false;
-  const daysRemaining = activePlan ? differenceInDays(new Date(activePlan.expiryDate), new Date()) : 0;
-  const usagePercent = activePlan ? Math.round((apiCredits / activePlan.totalCredits) * 100) : 0;
+  // Get active purchase from purchases collection (primary source)
+  const latestActivePurchase = activePurchases.length > 0 
+    ? activePurchases.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())[0]
+    : null;
+
+  // Plan calculations - prioritize purchases collection data
+  const hasPlan = !!latestActivePurchase || !!activePlan;
+  const purchaseExpiryDate = latestActivePurchase?.expiryDate || activePlan?.expiryDate;
+  const isExpired = purchaseExpiryDate ? isPast(new Date(purchaseExpiryDate)) : false;
+  const daysRemaining = purchaseExpiryDate ? differenceInDays(new Date(purchaseExpiryDate), new Date()) : 0;
+  
+  // Use purchase data for credits display
+  const displayTotalCredits = latestActivePurchase?.totalRequests || activePlan?.totalCredits || 0;
+  const displayUsedCredits = latestActivePurchase?.usedRequests || 0;
+  const displayRemainingCredits = latestActivePurchase 
+    ? latestActivePurchase.totalRequests - latestActivePurchase.usedRequests 
+    : apiCredits;
+  const usagePercent = displayTotalCredits > 0 
+    ? Math.round((displayRemainingCredits / displayTotalCredits) * 100) 
+    : 0;
+  
+  // Plan name from purchase or activePlan
+  const planName = activePlan?.planName || (latestActivePurchase ? `API Plan` : null);
+  const purchaseDate = activePlan?.purchaseDate || latestActivePurchase?.purchaseDate;
 
   return (
     <AppLayout title={selectedProvider ? selectedProvider.name : "API"}>
@@ -81,10 +102,12 @@ export default function ApiDocs() {
                       <Crown className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground">{activePlan.planName}</h3>
-                      <p className="text-[10px] text-muted-foreground">
-                        Purchased {format(new Date(activePlan.purchaseDate), "dd MMM yyyy")}
-                      </p>
+                      <h3 className="text-sm font-semibold text-foreground">{planName || "API Plan"}</h3>
+                      {purchaseDate && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Purchased {format(new Date(purchaseDate), "dd MMM yyyy")}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className={`px-2 py-1 rounded-full text-[10px] font-medium ${
@@ -102,22 +125,26 @@ export default function ApiDocs() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">API Requests</span>
-                    <span className="font-bold text-foreground">{apiCredits} <span className="text-muted-foreground font-normal">/ {activePlan.totalCredits}</span></span>
+                    <span className="font-bold text-foreground">
+                      {displayRemainingCredits} <span className="text-muted-foreground font-normal">/ {displayTotalCredits}</span>
+                    </span>
                   </div>
                   <Progress value={usagePercent} className="h-2" />
                   <p className="text-[10px] text-muted-foreground text-right">{usagePercent}% remaining</p>
                 </div>
 
                 {/* Expiry Info */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-background/60 border border-border/50">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Expires</span>
+                {purchaseExpiryDate && (
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-background/60 border border-border/50">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Expires</span>
+                    </div>
+                    <span className="text-xs font-medium text-foreground">
+                      {format(new Date(purchaseExpiryDate), "dd MMM yyyy")}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium text-foreground">
-                    {format(new Date(activePlan.expiryDate), "dd MMM yyyy")}
-                  </span>
-                </div>
+                )}
 
                 {/* Upgrade Button */}
                 <Button
@@ -150,10 +177,10 @@ export default function ApiDocs() {
                   </p>
                   
                   {/* Show remaining credits if any */}
-                  {apiCredits > 0 && (
+                  {displayRemainingCredits > 0 && (
                     <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-warning/10 border border-warning/20 mb-4">
                       <Zap className="w-4 h-4 text-warning" />
-                      <span className="text-sm text-foreground font-medium">{apiCredits} requests remaining</span>
+                      <span className="text-sm text-foreground font-medium">{displayRemainingCredits} requests remaining</span>
                     </div>
                   )}
                   
