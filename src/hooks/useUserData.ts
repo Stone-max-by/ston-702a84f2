@@ -255,7 +255,7 @@ export function useUserData() {
 
   const purchasePlan = useCallback(async (plan: { id: string; name: string; credits: number; validityDays: number }) => {
     const docId = getUserDocId();
-    if (!docId || !userData) return;
+    if (!docId) return;
 
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + plan.validityDays);
@@ -270,10 +270,10 @@ export function useUserData() {
 
     await updateDoc(doc(db, "users", docId), {
       activePlan,
-      apiCredits: userData.apiCredits + plan.credits,
+      apiCredits: plan.credits, // Set to the new plan's credits (not additive)
       updatedAt: new Date().toISOString(),
     });
-  }, [getUserDocId, userData]);
+  }, [getUserDocId]);
 
   const updateAdRewards = useCallback(async (adRewards: Partial<AdRewardsData>) => {
     const docId = getUserDocId();

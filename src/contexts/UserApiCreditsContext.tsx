@@ -54,6 +54,7 @@ export function UserApiCreditsProvider({ children }: { children: ReactNode }) {
     maxAdsPerDay,
     coinsPerAd,
     dailyBonusAmount,
+    purchasePlan: updateActivePlan,
   } = useUserData();
 
   const {
@@ -89,8 +90,19 @@ export function UserApiCreditsProvider({ children }: { children: ReactNode }) {
       status: "completed",
     });
 
-    // Create purchase
+    // Create purchase record
     const purchaseId = await createPurchase(plan);
+    
+    // Update user's active plan (this is what API Docs page reads)
+    if (purchaseId) {
+      await updateActivePlan({
+        id: plan.id,
+        name: plan.name,
+        credits: plan.requests,
+        validityDays: parseInt(plan.validity.split(" ")[0]) || 30,
+      });
+    }
+    
     return !!purchaseId;
   };
 
