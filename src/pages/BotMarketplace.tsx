@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { Bot, Search, Sparkles, TrendingUp, Clock } from "lucide-react";
+import { Bot, Search, Sparkles, TrendingUp, Clock, LayoutGrid, List } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BotCard } from "@/components/bots/BotCard";
+import { BotCardList } from "@/components/bots/BotCardList";
 import { BotDetailModal } from "@/components/bots/BotDetailModal";
 import { BotPurchaseModal } from "@/components/bots/BotPurchaseModal";
 import { useBots } from "@/hooks/useBots";
@@ -23,6 +24,7 @@ export default function BotMarketplace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<SortOption>("popular");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedBot, setSelectedBot] = useState<TelegramBot | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
@@ -132,23 +134,62 @@ export default function BotMarketplace() {
           </div>
         </div>
 
-        {/* Filter & Results */}
-        <FilterSheet
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          resultCount={filteredBots.length}
-          showPriceSort={true}
-        />
+        {/* Filter & View Toggle */}
+        <div className="flex items-center justify-between">
+          <FilterSheet
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            resultCount={filteredBots.length}
+            showPriceSort={true}
+          />
+          
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                viewMode === 'grid' 
+                  ? "bg-background text-foreground shadow-sm" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                viewMode === 'list' 
+                  ? "bg-background text-foreground shadow-sm" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
 
-        {/* Bot Grid */}
+        {/* Bot Grid/List */}
         {loading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={viewMode === 'grid' ? "grid grid-cols-2 gap-3" : "space-y-3"}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="space-y-2">
-                <Skeleton className="aspect-[4/3] rounded-2xl" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-full" />
-              </div>
+              viewMode === 'grid' ? (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="aspect-[4/3] rounded-2xl" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              ) : (
+                <div key={i} className="flex gap-3 p-3 rounded-xl border border-border/50">
+                  <Skeleton className="w-20 h-20 rounded-xl shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              )
             ))}
           </div>
         ) : error ? (
@@ -161,10 +202,20 @@ export default function BotMarketplace() {
             <p className="text-muted-foreground">No bots found</p>
             <p className="text-xs text-muted-foreground/70">Try a different search</p>
           </div>
-        ) : (
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 gap-3">
             {filteredBots.map((bot) => (
               <BotCard
+                key={bot.id}
+                bot={bot}
+                onClick={() => handleBotClick(bot)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredBots.map((bot) => (
+              <BotCardList
                 key={bot.id}
                 bot={bot}
                 onClick={() => handleBotClick(bot)}
