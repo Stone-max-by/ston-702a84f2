@@ -1,18 +1,16 @@
 import { useState, useEffect } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
-import { Key, Activity, Users, Zap, Search, Ban, Check, Settings2 } from "lucide-react";
+import { Key, Activity, Zap, Search, Ban, Check, Settings2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
 import { UserData } from "@/types/user";
 
 interface UserWithApiKey extends UserData {
@@ -20,7 +18,6 @@ interface UserWithApiKey extends UserData {
 }
 
 export default function AdminApiKeys() {
-  const { toast } = useToast();
   const [users, setUsers] = useState<UserWithApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,9 +56,9 @@ export default function AdminApiKeys() {
         "apiKey.isActive": newStatus,
         updatedAt: new Date().toISOString(),
       });
-      toast({ title: newStatus ? "Key Enabled" : "Key Disabled" });
+      toast.success(newStatus ? "Key enabled" : "Key disabled");
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+      toast.error("Failed to update status");
     }
   };
 
@@ -73,9 +70,9 @@ export default function AdminApiKeys() {
         updatedAt: new Date().toISOString(),
       });
       setEditingUser(null);
-      toast({ title: "Credits Updated" });
+      toast.success("Credits updated");
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update credits", variant: "destructive" });
+      toast.error("Failed to update credits");
     }
   };
 
@@ -84,159 +81,155 @@ export default function AdminApiKeys() {
 
   if (loading) {
     return (
-      <AdminLayout>
-        <div className="animate-pulse space-y-4">
-          <div className="h-32 bg-muted/50 rounded-xl" />
-          <div className="h-96 bg-muted/50 rounded-xl" />
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">API Keys</h1>
-          <p className="text-sm text-muted-foreground">Manage all user API keys</p>
-        </div>
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h1 className="text-lg font-bold text-foreground">API Keys</h1>
+        <p className="text-xs text-muted-foreground">{users.length} users with keys</p>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={Key} label="Total Users" value={users.length} />
-          <StatCard icon={Activity} label="Active Keys" value={activeKeys} />
-          <StatCard icon={Zap} label="Total Credits" value={totalCredits} />
-          <StatCard icon={Users} label="Inactive Keys" value={users.length - activeKeys} color="text-destructive" />
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, telegram ID, or key prefix..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        {/* Keys Table */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50 text-xs text-muted-foreground">
-                <tr>
-                  <th className="text-left p-3">User</th>
-                  <th className="text-left p-3">Telegram ID</th>
-                  <th className="text-left p-3">Key Prefix</th>
-                  <th className="text-left p-3">Credits</th>
-                  <th className="text-left p-3">Plan</th>
-                  <th className="text-left p-3">Status</th>
-                  <th className="text-left p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredUsers.map((user) => (
-                  <tr key={user.docId} className="hover:bg-muted/30">
-                    <td className="p-3">
-                      <span className="font-medium text-foreground">{user.displayName}</span>
-                    </td>
-                    <td className="p-3 text-sm text-muted-foreground font-mono">{user.telegramId}</td>
-                    <td className="p-3 text-sm font-mono">{user.apiKey?.keyPrefix}...</td>
-                    <td className="p-3">
-                      <span className="text-sm font-semibold text-foreground">{user.apiCredits || 0}</span>
-                    </td>
-                    <td className="p-3">
-                      {user.activePlan ? (
-                        <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">
-                          {user.activePlan.planName}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Free</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-1 rounded ${user.apiKey?.isActive ? "bg-green-500/20 text-green-400" : "bg-destructive/20 text-destructive"}`}>
-                        {user.apiKey?.isActive ? "Active" : "Disabled"}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => {
-                            setEditingUser(user);
-                            setNewCredits(user.apiCredits || 0);
-                          }}
-                        >
-                          <Settings2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`h-7 w-7 p-0 ${user.apiKey?.isActive ? "text-destructive" : "text-green-400"}`}
-                          onClick={() => handleToggleStatus(user)}
-                        >
-                          {user.apiKey?.isActive ? <Ban className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                      No users with API keys found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Key className="w-3.5 h-3.5 text-primary" />
           </div>
+          <p className="text-lg font-bold text-foreground">{activeKeys}</p>
+          <p className="text-[10px] text-muted-foreground">Active</p>
         </div>
+        <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Zap className="w-3.5 h-3.5 text-warning" />
+          </div>
+          <p className="text-lg font-bold text-foreground">{totalCredits}</p>
+          <p className="text-[10px] text-muted-foreground">Credits</p>
+        </div>
+        <div className="bg-card rounded-lg p-3 border border-border/50 text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Ban className="w-3.5 h-3.5 text-destructive" />
+          </div>
+          <p className="text-lg font-bold text-foreground">{users.length - activeKeys}</p>
+          <p className="text-[10px] text-muted-foreground">Disabled</p>
+        </div>
+      </div>
 
-        {/* Edit Credits Dialog */}
-        <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit API Credits</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                User: <span className="font-medium text-foreground">{editingUser?.displayName}</span>
-              </p>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">API Credits</label>
-                <Input
-                  type="number"
-                  value={newCredits}
-                  onChange={(e) => setNewCredits(Number(e.target.value))}
-                  min={0}
-                  step={100}
-                />
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name or key..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 h-9 text-sm bg-card border-border/50"
+        />
+      </div>
+
+      {/* Keys List */}
+      {filteredUsers.length === 0 ? (
+        <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
+          <Key className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No API keys found</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredUsers.map((user) => (
+            <div
+              key={user.docId}
+              className="bg-card rounded-xl border border-border/50 p-3 flex items-center gap-3"
+            >
+              {/* User Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground truncate">{user.displayName}</span>
+                  {user.activePlan && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-primary/20 text-primary rounded">
+                      {user.activePlan.planName}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs font-mono text-muted-foreground">{user.apiKey?.keyPrefix}...</span>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs text-foreground font-medium">{user.apiCredits || 0} credits</span>
+                </div>
               </div>
-              <Button className="w-full" onClick={handleUpdateCredits}>
-                Update Credits
+
+              {/* Status */}
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-medium shrink-0 ${
+                  user.apiKey?.isActive
+                    ? "bg-success/20 text-success"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {user.apiKey?.isActive ? "Active" : "Off"}
+              </span>
+
+              {/* Actions */}
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => {
+                    setEditingUser(user);
+                    setNewCredits(user.apiCredits || 0);
+                  }}
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-7 w-7 ${user.apiKey?.isActive ? "text-destructive" : "text-success"}`}
+                  onClick={() => handleToggleStatus(user)}
+                >
+                  {user.apiKey?.isActive ? <Ban className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Edit Credits Dialog */}
+      <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-base">Edit Credits</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              User: <span className="font-medium text-foreground">{editingUser?.displayName}</span>
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">API Credits</label>
+              <Input
+                type="number"
+                value={newCredits}
+                onChange={(e) => setNewCredits(Number(e.target.value))}
+                min={0}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingUser(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleUpdateCredits} className="flex-1">
+                Update
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </AdminLayout>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, color = "text-primary" }: { icon: any; label: string; value: number | string; color?: string }) {
-  return (
-    <div className="bg-card rounded-xl border border-border p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-4 h-4 ${color}`} />
-        <span className="text-sm text-muted-foreground">{label}</span>
-      </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
