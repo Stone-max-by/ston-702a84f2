@@ -3,14 +3,6 @@ import { Search, MoreHorizontal, Ban, Coins, DollarSign, Loader2, Users } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -45,9 +37,9 @@ export default function AdminUsers() {
     setActionLoading(true);
     try {
       await banUser(user.id, !user.banned);
-      toast.success(`User ${user.banned ? "unbanned" : "banned"} successfully`);
+      toast.success(`User ${user.banned ? "unbanned" : "banned"}`);
     } catch (error) {
-      toast.error("Failed to update user status");
+      toast.error("Failed to update user");
     } finally {
       setActionLoading(false);
     }
@@ -67,9 +59,7 @@ export default function AdminUsers() {
         await updateUserCoins(creditDialog.user.id, amount);
       }
 
-      toast.success(
-        `Added ${creditDialog.type === "balance" ? "₹" : ""}${amount}${creditDialog.type === "coins" ? " coins" : ""} to ${creditDialog.user.displayName}`
-      );
+      toast.success(`Added ${creditDialog.type === "balance" ? "₹" : ""}${amount}${creditDialog.type === "coins" ? " coins" : ""}`);
       setCreditDialog(null);
       setCreditAmount("");
     } catch (error) {
@@ -82,154 +72,133 @@ export default function AdminUsers() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-foreground">Users</h1>
-        <p className="text-sm text-muted-foreground">{users.length} registered users</p>
+        <h1 className="text-lg font-bold text-foreground">Users</h1>
+        <p className="text-xs text-muted-foreground">{users.length} registered</p>
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
+      <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, username, or Telegram ID..."
-          className="pl-10 bg-card border-white/10"
+          placeholder="Search users..."
+          className="pl-9 h-9 text-sm bg-card border-border/50"
         />
       </div>
 
-      {/* Table */}
+      {/* Users List */}
       {filteredUsers.length === 0 ? (
-        <div className="bg-card rounded-xl p-8 border border-white/5 text-center">
-          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">No users found</p>
+        <div className="bg-card rounded-xl p-8 border border-border/50 text-center">
+          <Users className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No users found</p>
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-white/5 overflow-x-auto">
-          <Table className="min-w-[700px]">
-            <TableHeader>
-              <TableRow className="border-white/5 hover:bg-transparent">
-                <TableHead className="text-muted-foreground">User</TableHead>
-                <TableHead className="text-muted-foreground">Telegram ID</TableHead>
-                <TableHead className="text-muted-foreground">Balance</TableHead>
-                <TableHead className="text-muted-foreground">Coins</TableHead>
-                <TableHead className="text-muted-foreground">Referrals</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
-                <TableHead className="text-muted-foreground text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="border-white/5">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.telegramId}`}
-                        alt={user.displayName}
-                        className="w-9 h-9 rounded-full bg-white/5"
-                      />
-                      <div>
-                        <p className="font-medium text-foreground">{user.displayName}</p>
-                        <p className="text-xs text-muted-foreground">@{user.username || "no_username"}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-sm">{user.telegramId}</TableCell>
-                  <TableCell className="text-foreground">₹{user.balance.toFixed(2)}</TableCell>
-                  <TableCell className="text-foreground">{user.coins}</TableCell>
-                  <TableCell className="text-muted-foreground">{user.referral?.referralCount || 0}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        !user.banned
-                          ? "bg-success/20 text-success"
-                          : "bg-destructive/20 text-destructive"
-                      }`}
-                    >
-                      {user.banned ? "banned" : "active"}
+        <div className="space-y-2">
+          {filteredUsers.map((user) => (
+            <div
+              key={user.id}
+              className="bg-card rounded-xl border border-border/50 p-3 flex items-center gap-3"
+            >
+              {/* Avatar & Info */}
+              <img
+                src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.telegramId}`}
+                alt={user.displayName}
+                className="w-10 h-10 rounded-full bg-muted shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground truncate">{user.displayName}</p>
+                  {user.banned && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-destructive/20 text-destructive">
+                      BANNED
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card border-white/10">
-                          <DropdownMenuItem
-                            onClick={() => setCreditDialog({ user, type: "balance" })}
-                            className="gap-2"
-                          >
-                            <DollarSign className="w-4 h-4" />
-                            Add Balance
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setCreditDialog({ user, type: "coins" })}
-                            className="gap-2"
-                          >
-                            <Coins className="w-4 h-4" />
-                            Add Coins
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => toggleBan(user)}
-                            className={`gap-2 ${!user.banned ? "text-destructive" : "text-success"}`}
-                          >
-                            <Ban className="w-4 h-4" />
-                            {!user.banned ? "Ban User" : "Unban User"}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground truncate">
+                  @{user.username || user.telegramId} • ₹{user.balance} • {user.coins} coins
+                </p>
+              </div>
+
+              {/* Actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    onClick={() => setCreditDialog({ user, type: "balance" })}
+                    className="gap-2 text-xs"
+                  >
+                    <DollarSign className="w-3.5 h-3.5" />
+                    Add Balance
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setCreditDialog({ user, type: "coins" })}
+                    className="gap-2 text-xs"
+                  >
+                    <Coins className="w-3.5 h-3.5" />
+                    Add Coins
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => toggleBan(user)}
+                    className={`gap-2 text-xs ${!user.banned ? "text-destructive" : "text-success"}`}
+                  >
+                    <Ban className="w-3.5 h-3.5" />
+                    {!user.banned ? "Ban" : "Unban"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Credit Dialog */}
       <Dialog open={!!creditDialog} onOpenChange={() => setCreditDialog(null)}>
-        <DialogContent className="bg-card border-white/10">
+        <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle className="text-foreground">
+            <DialogTitle className="text-base">
               Add {creditDialog?.type === "balance" ? "Balance" : "Coins"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <p className="text-sm text-muted-foreground">
-              Adding to: <span className="text-foreground">{creditDialog?.user.displayName}</span>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              To: <span className="text-foreground font-medium">{creditDialog?.user.displayName}</span>
             </p>
-            <div className="space-y-2">
-              <Label>Amount</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Amount</Label>
               <Input
                 type="number"
                 value={creditAmount}
                 onChange={(e) => setCreditAmount(e.target.value)}
-                placeholder={creditDialog?.type === "balance" ? "100.00" : "100"}
-                className="bg-background border-white/10"
+                placeholder={creditDialog?.type === "balance" ? "100" : "100"}
+                className="h-9 text-sm"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
+                size="sm"
                 onClick={() => setCreditDialog(null)}
                 className="flex-1"
                 disabled={actionLoading}
               >
                 Cancel
               </Button>
-              <Button onClick={handleCredit} className="flex-1" disabled={actionLoading}>
-                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : `Add ${creditDialog?.type === "balance" ? "Balance" : "Coins"}`}
+              <Button size="sm" onClick={handleCredit} className="flex-1" disabled={actionLoading}>
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
               </Button>
             </div>
           </div>
