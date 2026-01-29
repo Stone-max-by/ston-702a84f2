@@ -3,12 +3,10 @@ import { Bot, CheckCircle2, Loader2, AlertCircle, Zap, Shield, Clock } from "luc
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TelegramBot } from "@/types/bot";
-import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
+import { useUserData } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useUserData } from "@/hooks/useUserData";
+import { useTransactions } from "@/hooks/useTransactions";
 
 interface BotPurchaseModalProps {
   bot: TelegramBot | null;
@@ -22,9 +20,8 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
   const [step, setStep] = useState<PurchaseStep>('confirm');
   const [error, setError] = useState<string | null>(null);
   
-  // Use useUserData as single source of truth for balance
   const { balance, addBalance } = useUserData();
-  const { addTransaction } = useUserApiCredits();
+  const { addTransaction } = useTransactions();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -55,18 +52,6 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
     setError(null);
 
     try {
-      // Create purchase record first
-      const purchaseRef = await addDoc(collection(db, 'bot_purchases'), {
-        botId: bot.id,
-        botName: bot.name,
-        userId: user.id,
-        userName: user.displayName,
-        telegramId: user.telegramId,
-        amount: bot.price,
-        status: 'pending',
-        createdAt: serverTimestamp()
-      });
-
       // Deduct balance from user account
       await addBalance(-bot.price);
 
@@ -78,16 +63,15 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
         status: "completed",
       });
 
-      // Try webhook delivery
+      // Try webhook delivery if available
       let webhookSuccess = false;
       if (bot.webhookUrl) {
         try {
-          const response = await fetch(bot.webhookUrl, {
+          await fetch(bot.webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             mode: 'no-cors',
             body: JSON.stringify({
-              purchaseId: purchaseRef.id,
               botId: bot.id,
               botName: bot.name,
               userId: user.id,
@@ -103,23 +87,6 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
         }
       }
 
-      // Notify admin if webhook failed or no webhook
-      if (!webhookSuccess) {
-        await addDoc(collection(db, 'admin_notifications'), {
-          type: 'bot_purchase_pending',
-          purchaseId: purchaseRef.id,
-          botId: bot.id,
-          botName: bot.name,
-          userId: user.id,
-          userName: user.displayName,
-          telegramId: user.telegramId,
-          amount: bot.price,
-          message: `Manual delivery required for ${bot.name}`,
-          read: false,
-          createdAt: serverTimestamp()
-        });
-      }
-
       setStep('success');
       toast({
         title: "Purchase Successful! 🎉",
@@ -130,7 +97,8 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
 
     } catch (err) {
       console.error('Purchase failed:', err);
-      setError('Purchase failed. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Purchase failed. Please try again.';
+      setError(errorMessage);
       setStep('failed');
     }
   };
