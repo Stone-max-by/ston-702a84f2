@@ -1,36 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
   UserPlus,
-  Users,
-  Download,
   Code,
   ChevronRight,
   LogOut,
   AtSign,
   Loader2,
-  Copy,
-  Gift,
   Coins,
   Wallet,
-  FileText,
   Package,
-  ShoppingCart,
-  Zap,
+  FileText,
+  Download,
   ExternalLink,
-  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUserData } from "@/hooks/useUserData";
-import { useAdminSettings } from "@/hooks/useAdminSettings";
-import { useReferralChannel } from "@/hooks/useReferralChannel";
 import { format } from "date-fns";
-import { ApiKeyManager } from "@/components/profile/ApiKeyManager";
 
 export default function Profile() {
   const { user, signOut, isTelegram, loading: authLoading } = useAuth();
@@ -42,23 +33,8 @@ export default function Profile() {
     coins, 
     purchasedFiles,
     referral, 
-    referralBonusCoins,
-    newApiKey,
-    clearNewApiKey,
-    revokeApiKey,
-    regenerateApiKey,
   } = useUserData();
-  const { settings } = useAdminSettings();
-  const { verifying, verifyAndClaimReward } = useReferralChannel();
   const navigate = useNavigate();
-
-  const botUsername = "PyWalletBot";
-  const referralLink = `https://t.me/${botUsername}?start=${referral.referralCode}`;
-
-  const copyReferralLink = () => {
-    navigator.clipboard.writeText(referralLink);
-    toast.success("Referral link copied!");
-  };
 
   const loading = authLoading || dataLoading;
 
@@ -74,65 +50,50 @@ export default function Profile() {
     navigate("/");
   };
 
-  const handleVerifyChannel = async () => {
-    if (!user?.telegramId || !userData?.id) return;
-    
-    await verifyAndClaimReward(
-      user.telegramId,
-      userData.id,
-      settings.telegramChannelId,
-      referral.referredBy,
-      settings.referralBonus
-    );
-  };
-
-  const openChannel = () => {
-    if (settings.telegramChannelUrl) {
-      window.open(settings.telegramChannelUrl, '_blank');
-    }
-  };
-
   if (loading) {
     return (
       <AppLayout title="Profile">
         <div className="flex flex-col items-center justify-center h-64 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading your data...</p>
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </AppLayout>
     );
   }
 
-  // Show error state
   if (dataError) {
     return (
       <AppLayout title="Profile">
-        <div className="flex flex-col items-center justify-center h-64 gap-3 p-4">
-          <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center">
-            <AtSign className="w-8 h-8 text-destructive" />
+        <div className="flex flex-col items-center justify-center h-64 gap-4 p-4">
+          <div className="w-14 h-14 rounded-full bg-destructive/20 flex items-center justify-center">
+            <AtSign className="w-7 h-7 text-destructive" />
           </div>
-          <p className="text-lg font-semibold text-foreground">Error Loading Data</p>
-          <p className="text-sm text-muted-foreground text-center">{dataError}</p>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            Please make sure Firebase rules are configured correctly.
-          </p>
+          <div className="text-center">
+            <p className="font-semibold text-foreground">Error Loading Data</p>
+            <p className="text-sm text-muted-foreground mt-1">{dataError}</p>
+          </div>
         </div>
       </AppLayout>
     );
   }
 
-  // Show message for non-telegram users without data
   if (!user) {
     return (
       <AppLayout title="Profile">
-        <div className="flex flex-col items-center justify-center h-64 gap-3 p-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-            <AtSign className="w-8 h-8 text-primary" />
+        <div className="flex flex-col items-center justify-center h-64 gap-4 p-4">
+          <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+            <AtSign className="w-7 h-7 text-primary" />
           </div>
-          <p className="text-lg font-semibold text-foreground">No User Found</p>
-          <p className="text-sm text-muted-foreground text-center">
-            Please open this app from Telegram to access your profile.
-          </p>
+          <div className="text-center">
+            <p className="font-semibold text-foreground">Login Required</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Open this app from Telegram to access your profile
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/explore")} className="mt-2">
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Browse Products
+          </Button>
         </div>
       </AppLayout>
     );
@@ -145,171 +106,181 @@ export default function Profile() {
   return (
     <AppLayout title="Profile">
       <div className="space-y-4 pb-20">
-        {/* User Profile Header */}
-        <div className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border">
-          <Avatar className="w-16 h-16">
-            <AvatarImage src={user?.photoURL} />
-            <AvatarFallback className="bg-primary/20 text-primary text-xl">
-              {user?.displayName?.charAt(0) || "U"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-foreground">{user?.displayName || "Guest"}</h2>
-            {user?.username && (
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <AtSign className="w-3 h-3" />
-                {user.username}
-              </p>
-            )}
-            {isTelegram && (
-              <p className="text-xs text-primary mt-1">via Telegram</p>
-            )}
+        {/* Profile Header with Balance */}
+        <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-4 border border-primary/20">
+          <div className="flex items-center gap-4 mb-4">
+            <Avatar className="w-14 h-14 border-2 border-primary/30">
+              <AvatarImage src={user?.photoURL} />
+              <AvatarFallback className="bg-primary/20 text-primary text-lg font-bold">
+                {user?.displayName?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold text-foreground truncate">
+                {user?.displayName || "Guest"}
+              </h2>
+              {user?.username && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <AtSign className="w-3 h-3" />
+                  {user.username}
+                </p>
+              )}
+            </div>
+          </div>
+          
+          {/* Balance Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-background/60 backdrop-blur rounded-xl p-3 border border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-success/20 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-success" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-foreground">₹{balance}</p>
+                  <p className="text-[10px] text-muted-foreground">Balance</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-background/60 backdrop-blur rounded-xl p-3 border border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                  <Coins className="w-4 h-4 text-yellow-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-foreground">{coins}</p>
+                  <p className="text-[10px] text-muted-foreground">Coins</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Balance & Coins Card */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-4 bg-gradient-to-br from-success/20 to-success/5 rounded-xl border border-success/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Wallet className="w-5 h-5 text-success" />
-              <span className="text-sm text-muted-foreground">Balance</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">₹{balance}</p>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
+            <p className="text-lg font-bold text-foreground">{purchasedFiles.length}</p>
+            <p className="text-[10px] text-muted-foreground">Purchases</p>
           </div>
-          
-          <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Coins className="w-5 h-5 text-yellow-500" />
-              <span className="text-sm text-muted-foreground">Coins</span>
-            </div>
-            <p className="text-2xl font-bold text-foreground">{coins}</p>
+          <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
+            <p className="text-lg font-bold text-foreground">{referral.referralCount || 0}</p>
+            <p className="text-[10px] text-muted-foreground">Referrals</p>
+          </div>
+          <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
+            <p className="text-lg font-bold text-success">₹{referral.referralEarnings || 0}</p>
+            <p className="text-[10px] text-muted-foreground">Earned</p>
           </div>
         </div>
 
-        {/* Purchased Files Section */}
-        <div className="p-4 bg-card rounded-xl border border-border space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Purchased Files</h3>
+        {/* Purchased Files */}
+        {purchasedFiles.length > 0 && (
+          <div className="bg-card rounded-xl p-4 border border-border/50">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold">My Purchases</h3>
+              </div>
+              <span className="text-xs text-muted-foreground">{purchasedFiles.length} items</span>
             </div>
-            <span className="text-sm text-muted-foreground">{purchasedFiles.length} items</span>
-          </div>
-          
-          {purchasedFiles.length > 0 ? (
             <div className="space-y-2">
-              {purchasedFiles.map((fileId, index) => (
+              {purchasedFiles.slice(0, 3).map((fileId) => (
                 <div 
                   key={fileId} 
-                  className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg"
+                  className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg"
                 >
-                  <FileText className="w-4 h-4 text-primary" />
+                  <FileText className="w-4 h-4 text-primary shrink-0" />
                   <span className="text-sm text-foreground flex-1 truncate">{fileId}</span>
-                  <Download className="w-4 h-4 text-muted-foreground" />
+                  <Download className="w-4 h-4 text-muted-foreground shrink-0" />
                 </div>
               ))}
-            </div>
-          ) : (
-            <div className="py-6 text-center">
-              <Package className="w-10 h-10 text-muted-foreground/50 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No purchased files yet</p>
-              <Link to="/explore">
-                <Button variant="link" size="sm" className="mt-1">
-                  Browse Products
-                </Button>
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* User Stats */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-4 bg-card rounded-xl border border-border">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Joined on</p>
-              <p className="font-medium text-foreground">{createdDate}</p>
+              {purchasedFiles.length > 3 && (
+                <p className="text-xs text-muted-foreground text-center pt-1">
+                  +{purchasedFiles.length - 3} more items
+                </p>
+              )}
             </div>
           </div>
+        )}
 
-          {referral.referredBy && (
-            <div className="flex items-center gap-3 p-4 bg-card rounded-xl border border-border">
-              <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-success" />
+        {/* Quick Links */}
+        <div className="space-y-2">
+          <Link
+            to="/coins"
+            className="flex items-center justify-between p-3.5 bg-card rounded-xl border border-border/50 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                <Coins className="w-4 h-4 text-yellow-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Referred by</p>
-                <p className="font-medium text-foreground">{referral.referredBy}</p>
+                <p className="text-sm font-medium text-foreground">Earn Coins</p>
+                <p className="text-[10px] text-muted-foreground">Watch ads & earn rewards</p>
               </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </Link>
+
+          <Link
+            to="/api-docs"
+            className="flex items-center justify-between p-3.5 bg-card rounded-xl border border-border/50 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center">
+                <Code className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">API Docs</p>
+                <p className="text-[10px] text-muted-foreground">View endpoints & examples</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </Link>
+        </div>
+
+        {/* Account Info */}
+        <div className="bg-card rounded-xl p-4 border border-border/50 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Account Info</h3>
+          
+          <div className="flex items-center justify-between py-2 border-b border-border/30">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm">Joined</span>
+            </div>
+            <span className="text-sm font-medium text-foreground">{createdDate}</span>
+          </div>
+          
+          {referral.referredBy && (
+            <div className="flex items-center justify-between py-2 border-b border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <UserPlus className="w-4 h-4" />
+                <span className="text-sm">Referred by</span>
+              </div>
+              <span className="text-sm font-medium text-foreground">{referral.referredBy}</span>
+            </div>
+          )}
+          
+          {isTelegram && (
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <AtSign className="w-4 h-4" />
+                <span className="text-sm">Platform</span>
+              </div>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                Telegram
+              </span>
             </div>
           )}
         </div>
 
-        {/* API Key & Plan Management */}
-        <ApiKeyManager 
-          apiKey={userData?.apiKey || null}
-          apiCredits={userData?.apiCredits || 0}
-          activePlan={userData?.activePlan || null}
-          newApiKey={newApiKey}
-          onRevokeKey={revokeApiKey}
-          onClearNewKey={clearNewApiKey}
-          onRegenerateKey={regenerateApiKey}
-        />
-
-        {/* API Documentation Link */}
-        <Link
-          to="/api-docs"
-          className="flex items-center justify-between p-4 bg-card rounded-xl border border-border hover:bg-muted/50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Code className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-medium text-foreground">API Documentation</p>
-              <p className="text-xs text-muted-foreground">View endpoints and examples</p>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-muted-foreground" />
-        </Link>
-
-        {/* Buy API Credits Card */}
-        <Link
-          to="/coins"
-          className="flex items-center justify-between p-4 bg-gradient-to-r from-success/20 to-primary/20 rounded-xl border border-success/30 hover:from-success/30 hover:to-primary/30 transition-all"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-success" />
-            </div>
-            <div>
-              <p className="font-medium text-foreground">Buy API Credits</p>
-              <p className="text-xs text-muted-foreground">Get more credits for API usage</p>
-            </div>
-          </div>
-          <ShoppingCart className="w-5 h-5 text-success" />
-        </Link>
-
-        {/* Logout Button - Only for browser users */}
+        {/* Logout */}
         {user && !isTelegram && (
           <Button
             variant="outline"
-            className="w-full mt-4 text-destructive border-destructive/30 hover:bg-destructive/10"
+            className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
             onClick={handleSignOut}
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sign Out
           </Button>
-        )}
-
-        {/* Debug Info (only in development) */}
-        {userData && (
-          <div className="p-3 bg-muted/20 rounded-lg text-xs text-muted-foreground">
-            <p>User ID: {userData.id}</p>
-            <p>Telegram ID: {userData.telegramId}</p>
-          </div>
         )}
       </div>
     </AppLayout>
