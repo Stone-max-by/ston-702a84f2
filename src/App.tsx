@@ -25,6 +25,8 @@ import AdminApiEndpoints from "./pages/admin/AdminApiEndpoints";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminApiKeys from "./pages/admin/AdminApiKeys";
 import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
+import AdminBotPurchases from "./pages/admin/AdminBotPurchases";
+import AdminPromotions from "./pages/admin/AdminPromotions";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +53,8 @@ const App = () => (
               <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
               <Route path="/admin/products" element={<AdminLayout><AdminProducts /></AdminLayout>} />
               <Route path="/admin/bots" element={<AdminLayout><AdminBots /></AdminLayout>} />
+              <Route path="/admin/bot-purchases" element={<AdminLayout><AdminBotPurchases /></AdminLayout>} />
+              <Route path="/admin/promotions" element={<AdminLayout><AdminPromotions /></AdminLayout>} />
               <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
               <Route path="/admin/api" element={<AdminLayout><AdminApiEndpoints /></AdminLayout>} />
               <Route path="/admin/api-keys" element={<AdminLayout><AdminApiKeys /></AdminLayout>} />

@@ -7,6 +7,8 @@ import { useUserData } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTransactions } from "@/hooks/useTransactions";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface BotPurchaseModalProps {
   bot: TelegramBot | null;
@@ -62,6 +64,38 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
         description: `Bot: ${bot.name}`,
         status: "completed",
       });
+
+      // Save bot purchase record
+      try {
+        await addDoc(collection(db, 'bot_purchases'), {
+          botId: bot.id,
+          botName: bot.name,
+          userId: user.id,
+          userName: user.displayName,
+          telegramId: user.telegramId,
+          amount: bot.price,
+          status: 'pending',
+          createdAt: serverTimestamp()
+        });
+      } catch (purchaseError) {
+        console.log('Purchase record save skipped:', purchaseError);
+      }
+
+      // Create admin notification
+      try {
+        await addDoc(collection(db, 'admin_notifications'), {
+          type: 'bot_purchase',
+          title: bot.name,
+          message: `${user.displayName} purchased for ₹${bot.price}`,
+          userId: user.id,
+          userName: user.displayName,
+          amount: bot.price,
+          read: false,
+          createdAt: serverTimestamp()
+        });
+      } catch (notifError) {
+        console.log('Notification save skipped:', notifError);
+      }
 
       // Try webhook delivery if available
       let webhookSuccess = false;

@@ -13,16 +13,21 @@ import {
   Key, 
   Bot, 
   Ticket,
-  X
+  X,
+  ShoppingBag,
+  Megaphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { AdminNotificationBell } from "./AdminNotificationBell";
 
 const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
   { to: "/admin/products", icon: Package, label: "Products" },
   { to: "/admin/bots", icon: Bot, label: "Bots" },
+  { to: "/admin/bot-purchases", icon: ShoppingBag, label: "Bot Sales" },
+  { to: "/admin/promotions", icon: Megaphone, label: "Promotions" },
   { to: "/admin/users", icon: Users, label: "Users" },
   { to: "/admin/api", icon: Code, label: "API" },
   { to: "/admin/api-keys", icon: Key, label: "API Keys" },
@@ -136,16 +141,20 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <span className="text-sm font-bold text-foreground">Admin</span>
           </div>
           
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-64 p-0 bg-card border-border/50">
-              <NavContent onItemClick={() => setMobileOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <div className="flex items-center gap-1">
+            <AdminNotificationBell />
+            
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-64 p-0 bg-card border-border/50">
+                <NavContent onItemClick={() => setMobileOpen(false)} />
+              </SheetContent>
+            </Sheet>
+          </div>
         </header>
 
         {/* Main Content */}

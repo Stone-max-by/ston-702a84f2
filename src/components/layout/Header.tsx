@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserData } from "@/hooks/useUserData";
+import { UserNotificationCenter } from "@/components/notifications/UserNotificationCenter";
 
 interface HeaderProps {
   title: string;
@@ -46,26 +47,29 @@ export function Header({ title, showBack, onBack }: HeaderProps) {
 
         {/* Right - User section */}
         {user ? (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-2 px-2 py-1.5 rounded-full bg-muted/30 hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-1 text-success text-xs font-semibold">
-                  <Wallet className="w-3.5 h-3.5" />
-                  <span>₹{balance}</span>
-                </div>
-                <div className="w-px h-4 bg-border/50" />
-                <div className="flex items-center gap-1 text-yellow-500 text-xs font-semibold">
-                  <Coins className="w-3.5 h-3.5" />
-                  <span>{coins}</span>
-                </div>
-                <Avatar className="w-7 h-7 ring-2 ring-primary/20">
-                  <AvatarImage src={user.photoURL} alt={displayName} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </PopoverTrigger>
+          <div className="flex items-center gap-1">
+            <UserNotificationCenter />
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 px-2 py-1.5 rounded-full bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-1 text-success text-xs font-semibold">
+                    <Wallet className="w-3.5 h-3.5" />
+                    <span>₹{balance}</span>
+                  </div>
+                  <div className="w-px h-4 bg-border/50" />
+                  <div className="flex items-center gap-1 text-yellow-500 text-xs font-semibold">
+                    <Coins className="w-3.5 h-3.5" />
+                    <span>{coins}</span>
+                  </div>
+                  <Avatar className="w-7 h-7 ring-2 ring-primary/20">
+                    <AvatarImage src={user.photoURL} alt={displayName} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </PopoverTrigger>
             <PopoverContent align="end" className="w-56 p-2 bg-card border-border/50">
               <div className="space-y-1">
                 {/* User Info */}
@@ -141,6 +145,7 @@ export function Header({ title, showBack, onBack }: HeaderProps) {
               </div>
             </PopoverContent>
           </Popover>
+          </div>
         ) : (
           <Button
             variant="default"

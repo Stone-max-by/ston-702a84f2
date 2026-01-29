@@ -14,13 +14,18 @@ import {
   FileText,
   Download,
   ExternalLink,
+  Bot,
+  ShoppingBag,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useUserData } from "@/hooks/useUserData";
-import { format } from "date-fns";
+import { useUserPurchases } from "@/hooks/useUserPurchases";
+import { format, formatDistanceToNow } from "date-fns";
 
 export default function Profile() {
   const { user, signOut, isTelegram, loading: authLoading } = useAuth();
@@ -31,6 +36,7 @@ export default function Profile() {
     purchasedFiles,
     referral, 
   } = useUserData();
+  const { botPurchases, loading: purchasesLoading, totalSpent } = useUserPurchases();
   const navigate = useNavigate();
 
   const loading = authLoading || dataLoading;
@@ -132,20 +138,68 @@ export default function Profile() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
             <p className="text-lg font-bold text-foreground">{purchasedFiles.length}</p>
-            <p className="text-[10px] text-muted-foreground">Purchases</p>
+            <p className="text-[10px] text-muted-foreground">Products</p>
+          </div>
+          <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
+            <p className="text-lg font-bold text-foreground">{botPurchases.length}</p>
+            <p className="text-[10px] text-muted-foreground">Bots</p>
           </div>
           <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
             <p className="text-lg font-bold text-foreground">{referral.referralCount || 0}</p>
             <p className="text-[10px] text-muted-foreground">Referrals</p>
           </div>
           <div className="bg-card rounded-xl p-3 border border-border/50 text-center">
-            <p className="text-lg font-bold text-success">₹{referral.referralEarnings || 0}</p>
-            <p className="text-[10px] text-muted-foreground">Earned</p>
+            <p className="text-lg font-bold text-success">₹{totalSpent}</p>
+            <p className="text-[10px] text-muted-foreground">Spent</p>
           </div>
         </div>
+
+        {/* Bot Purchases */}
+        {botPurchases.length > 0 && (
+          <div className="bg-card rounded-xl p-4 border border-border/50">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold">My Bots</h3>
+              </div>
+              <span className="text-xs text-muted-foreground">{botPurchases.length} bots</span>
+            </div>
+            <div className="space-y-2">
+              {botPurchases.slice(0, 3).map((purchase) => (
+                <div 
+                  key={purchase.id} 
+                  className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Bot className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{purchase.itemName}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatDistanceToNow(purchase.createdAt, { addSuffix: true })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {purchase.status === 'delivered' ? (
+                      <CheckCircle className="w-4 h-4 text-success" />
+                    ) : (
+                      <Clock className="w-4 h-4 text-yellow-500" />
+                    )}
+                    <span className="text-xs font-medium text-success">₹{purchase.amount}</span>
+                  </div>
+                </div>
+              ))}
+              {botPurchases.length > 3 && (
+                <p className="text-xs text-muted-foreground text-center pt-1">
+                  +{botPurchases.length - 3} more bots
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Purchased Files */}
         {purchasedFiles.length > 0 && (
