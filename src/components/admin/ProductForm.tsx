@@ -148,6 +148,7 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
     title?: string;
     file?: ProductFile;
     thumbnailFileId?: string;
+    thumbnailUrl?: string;
     telegramUsername?: string;
   }) => {
     const updates: Partial<Product> = {};
@@ -166,6 +167,11 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
     
     // Set upload date to today
     updates.uploadDate = new Date().toISOString().split("T")[0];
+    
+    // Set thumbnail URL from ImageKit
+    if (data.thumbnailUrl) {
+      updates.thumbnail = data.thumbnailUrl;
+    }
     
     // Apply all updates at once
     setFormData(prev => ({
