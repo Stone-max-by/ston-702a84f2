@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
@@ -11,6 +11,10 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
 const FIREBASE_CONFIG = {
   projectId: "gtwy-bf375",
 };
+
+// Firestore REST calls require an API key when not using OAuth.
+// This is a public key (same as frontend) and is safe to embed.
+const FIREBASE_API_KEY = "AIzaSyAPuV5P65P76t1XdFqyjbTgdxEUqG5aviY";
 
 interface TelegramFile {
   file_id: string;
@@ -103,7 +107,7 @@ function convertFromFirestoreFormat(fields: Record<string, any>): Record<string,
 }
 
 async function createDocument(collection: string, data: Record<string, any>): Promise<string> {
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/${collection}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/${collection}?key=${FIREBASE_API_KEY}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -123,7 +127,7 @@ async function createDocument(collection: string, data: Record<string, any>): Pr
 
 async function updateDocument(collection: string, docId: string, data: Record<string, any>): Promise<void> {
   const fieldPaths = Object.keys(data).map(k => `updateMask.fieldPaths=${k}`).join('&');
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/${collection}/${docId}?${fieldPaths}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/${collection}/${docId}?${fieldPaths}&key=${FIREBASE_API_KEY}`;
   
   const response = await fetch(url, {
     method: 'PATCH',
@@ -139,7 +143,7 @@ async function updateDocument(collection: string, docId: string, data: Record<st
 }
 
 async function findByField(collection: string, field: string, value: number | string): Promise<{ id: string; data: Record<string, any> } | null> {
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery`;
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`;
   
   const fieldValue = typeof value === 'number' 
     ? { integerValue: value.toString() }
@@ -181,7 +185,7 @@ async function findByField(collection: string, field: string, value: number | st
 
 // Find active session for user (pending or file_uploaded status)
 async function findActiveSession(telegramUserId: number): Promise<{ id: string; data: Record<string, any> } | null> {
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery`;
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`;
   
   const response = await fetch(url, {
     method: 'POST',
