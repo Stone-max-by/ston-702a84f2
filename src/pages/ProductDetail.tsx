@@ -27,7 +27,7 @@ import {
   Share2,
   Clock,
   Play,
-  Coins,
+  Wallet,
   ShoppingCart,
   CheckCircle,
   Loader2,
@@ -69,7 +69,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { requireAuth } = useRequireAuth();
-  const { coins, addCoins, addPurchasedFile, hasFile, userData } = useUserData();
+  const { balance, updateBalance, addPurchasedFile, hasFile, userData } = useUserData();
   const { user } = useAuth();
   const [purchasing, setPurchasing] = useState(false);
   const [sendingFile, setSendingFile] = useState(false);
@@ -148,13 +148,13 @@ const ProductDetail = () => {
       return;
     }
     
-    // Paid product - purchase with coins
-    const price = product.coinPrice || 0;
+    // Paid product - purchase with balance
+    const price = product.price || 0;
     
-    if (coins < price) {
+    if (balance < price) {
       toast({
-        title: "Insufficient Coins",
-        description: `You need ${price} coins but only have ${coins}. Get more coins to purchase.`,
+        title: "Insufficient Balance",
+        description: `You need ₹${price} but only have ₹${balance}. Add more balance to purchase.`,
         variant: "destructive",
       });
       return;
@@ -162,8 +162,8 @@ const ProductDetail = () => {
     
     try {
       setPurchasing(true);
-      // Use addCoins with negative value to deduct coins
-      await addCoins(-price);
+      // Deduct balance
+      await updateBalance(balance - price);
       await addPurchasedFile(product.id);
       toast({
         title: "Purchase Successful!",
@@ -471,9 +471,9 @@ const ProductDetail = () => {
               {purchasing || sendingFile ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <Coins className="w-5 h-5" />
+                <Wallet className="w-5 h-5" />
               )}
-              {purchasing ? "Processing..." : sendingFile ? "Sending..." : `Buy for ${product.coinPrice} Coins`}
+              {purchasing ? "Processing..." : sendingFile ? "Sending..." : `Buy for ₹${product.price}`}
             </Button>
           )}
         </div>
