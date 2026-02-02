@@ -45,17 +45,13 @@ export function useProducts() {
         } as Product);
       });
       
-      // Use dummy products if no products in Firebase
-      if (productList.length === 0) {
-        setProducts(getDummyProductsWithIds());
-      } else {
-        setProducts(productList);
-      }
+      // Only show Firestore products, no dummy fallback
+      setProducts(productList);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching products:", error);
-      // Fallback to dummy products on error
-      setProducts(getDummyProductsWithIds());
+      // On error, show empty list instead of dummy products
+      setProducts([]);
       setLoading(false);
     });
 
