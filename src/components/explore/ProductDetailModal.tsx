@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Download,
   Eye,
@@ -14,15 +13,10 @@ import {
   Star,
   Share2,
   Clock,
-  Play,
-  Coins,
-  CheckCircle,
-  Loader2,
   Check,
 } from "lucide-react";
 import { Product, productTypeLabels, productTypeIcons } from "@/types/product";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { useUserData } from "@/hooks/useUserData";
+import { ProductActionButtons } from "./ProductActionButtons";
 import { toast } from "@/hooks/use-toast";
 
 interface ProductDetailModalProps {
@@ -32,52 +26,11 @@ interface ProductDetailModalProps {
 }
 
 export function ProductDetailModal({ product, open, onClose }: ProductDetailModalProps) {
-  const { requireAuth } = useRequireAuth();
-  const { coins, updateCoins, addPurchasedFile, hasFile } = useUserData();
-  const [purchasing, setPurchasing] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (!product) return null;
 
-  const isOwned = hasFile(product.id);
   const screenshots = product.screenshots?.length ? product.screenshots : [product.thumbnail];
-
-  const handleAction = async () => {
-    if (!requireAuth("access this product")) return;
-    
-    if (isOwned) {
-      toast({ title: "Download Started", description: `Downloading ${product.title}...` });
-      return;
-    }
-    
-    if (product.isFree && !product.unlockByAds) {
-      await addPurchasedFile(product.id);
-      toast({ title: "Download Started", description: `Downloading ${product.title}...` });
-      return;
-    }
-    
-    if (product.unlockByAds) {
-      toast({ title: "Watch Ads Required", description: `Watch ${product.adCreditsRequired} ad(s) to unlock` });
-      return;
-    }
-    
-    const price = product.coinPrice || 0;
-    if (coins < price) {
-      toast({ title: "Insufficient Coins", description: `Need ${price} coins, have ${coins}`, variant: "destructive" });
-      return;
-    }
-    
-    try {
-      setPurchasing(true);
-      await updateCoins(coins - price);
-      await addPurchasedFile(product.id);
-      toast({ title: "Purchase Successful!", description: `${product.title} is now yours.` });
-    } catch {
-      toast({ title: "Purchase Failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setPurchasing(false);
-    }
-  };
 
   const handleShare = () => {
     navigator.clipboard.writeText(`${window.location.origin}/product/${product.slug || product.id}`);
@@ -193,26 +146,9 @@ export function ProductDetailModal({ product, open, onClose }: ProductDetailModa
             </div>
           </div>
 
-          {/* Action Button */}
+          {/* Action Buttons */}
           <div className="p-3 border-t border-white/5 bg-card">
-            {isOwned ? (
-              <Button onClick={handleAction} className="w-full h-10 text-sm font-semibold gap-1.5 bg-green-600 hover:bg-green-700">
-                <CheckCircle className="w-4 h-4" />Download (Owned)
-              </Button>
-            ) : product.isFree && !product.unlockByAds ? (
-              <Button onClick={handleAction} className="w-full h-10 text-sm font-semibold gap-1.5 bg-green-600 hover:bg-green-700">
-                <Download className="w-4 h-4" />Download Free
-              </Button>
-            ) : product.unlockByAds ? (
-              <Button onClick={handleAction} className="w-full h-10 text-sm font-semibold gap-1.5 bg-amber-600 hover:bg-amber-700">
-                <Play className="w-4 h-4" />Watch {product.adCreditsRequired} Ad{(product.adCreditsRequired || 1) > 1 ? 's' : ''}
-              </Button>
-            ) : (
-              <Button onClick={handleAction} disabled={purchasing} className="w-full h-10 text-sm font-semibold gap-1.5">
-                {purchasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Coins className="w-4 h-4" />}
-                {purchasing ? "Processing..." : `Buy for ${product.coinPrice} Coins`}
-              </Button>
-            )}
+            <ProductActionButtons product={product} />
           </div>
         </div>
       </SheetContent>

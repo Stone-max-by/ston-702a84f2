@@ -66,6 +66,7 @@ const defaultProduct: Partial<Product> = {
   unlockByAds: false,
   adCreditsRequired: 0,
   coinPrice: 0,
+  shortlinkUrl: "",
   downloads: 0,
   views: 0,
   likes: 0,
@@ -609,6 +610,21 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
                   />
                 </div>
               )}
+
+              {/* Shortlink URL */}
+              <div className="space-y-2">
+                <Label htmlFor="shortlinkUrl">Shortlink URL (Optional)</Label>
+                <Input
+                  id="shortlinkUrl"
+                  value={formData.shortlinkUrl || ""}
+                  onChange={(e) => updateField("shortlinkUrl", e.target.value)}
+                  placeholder="https://link-hub.net/xxxxx"
+                  className="bg-background border-white/10"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Add a monetized shortlink (e.g., LinkHub, Shrinkme) for users to access the download
+                </p>
+              </div>
             </TabsContent>
 
             {/* Meta Tab */}
