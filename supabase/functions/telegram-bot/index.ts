@@ -62,10 +62,6 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
 
-function generateSessionId(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
 // Firestore helpers
 function convertToFirestoreFormat(data: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {};
@@ -146,9 +142,10 @@ async function updateDocument(collection: string, docId: string, data: Record<st
   }
 }
 
-async function findActiveSession(telegramUserId: number): Promise<{ id: string; data: Record<string, any> } | null> {
+// Find existing file by file_unique_id
+async function findByFileUniqueId(fileUniqueId: string): Promise<{ id: string; data: Record<string, any> } | null> {
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`;
-  console.log('Finding session for user:', telegramUserId);
+  console.log('Finding file by unique ID:', fileUniqueId);
   
   const response = await fetch(url, {
     method: 'POST',
@@ -157,31 +154,10 @@ async function findActiveSession(telegramUserId: number): Promise<{ id: string; 
       structuredQuery: {
         from: [{ collectionId: 'temp_uploads' }],
         where: {
-          compositeFilter: {
-            op: 'AND',
-            filters: [
-              {
-                fieldFilter: {
-                  field: { fieldPath: 'telegramUserId' },
-                  op: 'EQUAL',
-                  value: { integerValue: telegramUserId.toString() }
-                }
-              },
-              {
-                fieldFilter: {
-                  field: { fieldPath: 'status' },
-                  op: 'IN',
-                  value: { 
-                    arrayValue: { 
-                      values: [
-                        { stringValue: 'pending' },
-                        { stringValue: 'file_uploaded' }
-                      ]
-                    }
-                  }
-                }
-              }
-            ]
+          fieldFilter: {
+            field: { fieldPath: 'fileUniqueId' },
+            op: 'EQUAL',
+            value: { stringValue: fileUniqueId }
           }
         },
         limit: 1
@@ -206,6 +182,59 @@ async function findActiveSession(telegramUserId: number): Promise<{ id: string; 
   return null;
 }
 
+// Find file waiting for thumbnail (last file uploaded by user without thumbnail)
+async function findFileWaitingForThumbnail(telegramUserId: number): Promise<{ id: string; data: Record<string, any> } | null> {
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'temp_uploads' }],
+        where: {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              {
+                fieldFilter: {
+                  field: { fieldPath: 'telegramUserId' },
+                  op: 'EQUAL',
+                  value: { integerValue: telegramUserId.toString() }
+                }
+              },
+              {
+                fieldFilter: {
+                  field: { fieldPath: 'status' },
+                  op: 'EQUAL',
+                  value: { stringValue: 'file_uploaded' }
+                }
+              }
+            ]
+          }
+        },
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+        limit: 1
+      }
+    }),
+  });
+  
+  const responseText = await response.text();
+  
+  if (!response.ok) {
+    return null;
+  }
+  
+  const results = JSON.parse(responseText);
+  if (results && results.length > 0 && results[0].document) {
+    const doc = results[0].document;
+    const docPath = doc.name.split('/');
+    return { id: docPath[docPath.length - 1], data: convertFromFirestoreFormat(doc.fields) };
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -215,7 +244,6 @@ serve(async (req) => {
   const url = new URL(req.url);
   
   // === SET WEBHOOK ENDPOINT ===
-  // Call this once to set up the webhook: GET /telegram-bot?action=setwebhook
   if (url.searchParams.get('action') === 'setwebhook') {
     const webhookUrl = `${SUPABASE_URL}/functions/v1/telegram-bot`;
     const setWebhookUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`;
@@ -272,10 +300,10 @@ serve(async (req) => {
     if (message.text === '/start') {
       await sendMessage(chatId, 
         `🤖 <b>Product Upload Bot</b>\n\n` +
-        `Commands:\n` +
-        `📤 /upload - Start upload session\n` +
-        `❓ /help - Help\n\n` +
-        `<i>Use /upload to add products!</i>`
+        `Simply send me files!\n\n` +
+        `📤 Send <b>product file</b> to upload\n` +
+        `🖼️ Send <b>photo</b> after file for thumbnail\n\n` +
+        `Each file gets a unique <b>File ID</b> - use it in webapp to fetch data anytime!`
       );
       return new Response('OK', { status: 200, headers: corsHeaders });
     }
@@ -284,128 +312,63 @@ serve(async (req) => {
     if (message.text === '/help') {
       await sendMessage(chatId,
         `📖 <b>How to Upload</b>\n\n` +
-        `1️⃣ /upload - Start session\n` +
-        `2️⃣ Send your file\n` +
-        `3️⃣ Send thumbnail OR /skip\n` +
-        `4️⃣ Copy Session ID to webapp`
+        `1️⃣ Send your product file\n` +
+        `2️⃣ (Optional) Send thumbnail photo\n` +
+        `3️⃣ Copy <b>File ID</b> to webapp\n\n` +
+        `💡 Same File ID works forever - reuse it anytime!`
       );
       return new Response('OK', { status: 200, headers: corsHeaders });
     }
 
-    // === /upload command ===
-    if (message.text === '/upload') {
-      const sessionId = generateSessionId();
-      console.log('Creating new session:', sessionId);
-      
-      try {
-        await createDocument('temp_uploads', {
-          sessionId: sessionId,
-          telegramUserId: userId,
-          telegramUsername: username,
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        
-        await sendMessage(chatId,
-          `📤 <b>Session Started!</b>\n\n` +
-          `🔑 Session ID: <code>${sessionId}</code>\n\n` +
-          `Now send your <b>product file</b>.`
-        );
-      } catch (error) {
-        console.error('Error creating session:', error);
-        await sendMessage(chatId, `❌ Error creating session. Please try again.`);
-      }
-      return new Response('OK', { status: 200, headers: corsHeaders });
-    }
-
-    // === /skip command ===
-    if (message.text === '/skip') {
-      const session = await findActiveSession(userId);
-      
-      if (!session || session.data.status !== 'file_uploaded') {
-        await sendMessage(chatId, `❌ No file uploaded yet. Use /upload first, then send a file.`);
-        return new Response('OK', { status: 200, headers: corsHeaders });
-      }
-      
-      await updateDocument('temp_uploads', session.id, {
-        status: 'complete',
-        updatedAt: new Date().toISOString(),
-      });
-      
-      await sendMessage(chatId,
-        `✅ <b>Upload Complete!</b>\n\n` +
-        `🔑 Session ID: <code>${session.data.sessionId}</code>\n\n` +
-        `Paste this in webapp to fetch data!`
-      );
-      return new Response('OK', { status: 200, headers: corsHeaders });
-    }
-
-    // === File upload ===
+    // === File upload (document) ===
     if (message.document) {
       const doc = message.document;
-      console.log('Received document:', doc.file_name);
+      const fileUniqueId = doc.file_unique_id;
+      console.log('Received document:', doc.file_name, 'unique_id:', fileUniqueId);
       
-      let session = await findActiveSession(userId);
+      // Check if this file already exists
+      const existingFile = await findByFileUniqueId(fileUniqueId);
       
-      if (!session || session.data.status !== 'pending') {
-        // Create new session on the fly
-        const sessionId = generateSessionId();
-        console.log('Creating new session with file:', sessionId);
-        
-        try {
-          await createDocument('temp_uploads', {
-            sessionId: sessionId,
-            telegramUserId: userId,
-            telegramUsername: username,
-            fileId: doc.file_id,
-            fileName: doc.file_name || 'unknown',
-            fileSize: doc.file_size || 0,
-            fileSizeFormatted: formatFileSize(doc.file_size || 0),
-            mimeType: doc.mime_type || 'application/octet-stream',
-            title: doc.file_name || 'Untitled',
-            status: 'file_uploaded',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          });
-          
-          await sendMessage(chatId,
-            `📁 <b>File Received!</b>\n\n` +
-            `📄 ${doc.file_name || 'unknown'}\n` +
-            `📊 ${formatFileSize(doc.file_size || 0)}\n` +
-            `🔑 <code>${sessionId}</code>\n\n` +
-            `Now send <b>thumbnail</b> or /skip`
-          );
-        } catch (error) {
-          console.error('Error saving file:', error);
-          await sendMessage(chatId, `❌ Error saving file. Please try again.`);
-        }
+      if (existingFile) {
+        // File already exists, just show the info
+        await sendMessage(chatId,
+          `📁 <b>File Already Uploaded!</b>\n\n` +
+          `📄 ${doc.file_name || 'unknown'}\n` +
+          `📊 ${formatFileSize(doc.file_size || 0)}\n\n` +
+          `🔑 File ID:\n<code>${fileUniqueId}</code>\n\n` +
+          `✅ Use this ID in webapp - works forever!`
+        );
         return new Response('OK', { status: 200, headers: corsHeaders });
       }
       
-      // Update existing pending session
-      console.log('Updating existing session with file:', session.id);
+      // Create new file record
       try {
-        await updateDocument('temp_uploads', session.id, {
+        await createDocument('temp_uploads', {
+          fileUniqueId: fileUniqueId,
+          telegramUserId: userId,
+          telegramUsername: username,
           fileId: doc.file_id,
           fileName: doc.file_name || 'unknown',
           fileSize: doc.file_size || 0,
           fileSizeFormatted: formatFileSize(doc.file_size || 0),
           mimeType: doc.mime_type || 'application/octet-stream',
-          title: doc.file_name || 'Untitled',
+          title: doc.file_name?.replace(/\.[^.]+$/, '') || 'Untitled',
           status: 'file_uploaded',
+          usageCount: 0,
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
         
         await sendMessage(chatId,
-          `📁 <b>File Received!</b>\n\n` +
+          `📁 <b>File Uploaded!</b>\n\n` +
           `📄 ${doc.file_name || 'unknown'}\n` +
-          `📊 ${formatFileSize(doc.file_size || 0)}\n` +
-          `🔑 <code>${session.data.sessionId}</code>\n\n` +
-          `Now send <b>thumbnail</b> or /skip`
+          `📊 ${formatFileSize(doc.file_size || 0)}\n\n` +
+          `🔑 File ID:\n<code>${fileUniqueId}</code>\n\n` +
+          `🖼️ Send <b>photo</b> now for thumbnail\n` +
+          `Or use File ID directly in webapp!`
         );
       } catch (error) {
-        console.error('Error updating session:', error);
+        console.error('Error saving file:', error);
         await sendMessage(chatId, `❌ Error saving file. Please try again.`);
       }
       return new Response('OK', { status: 200, headers: corsHeaders });
@@ -414,28 +377,35 @@ serve(async (req) => {
     // === Photo upload (thumbnail) ===
     if (message.photo && message.photo.length > 0) {
       console.log('Received photo for thumbnail');
-      const session = await findActiveSession(userId);
       
-      if (!session || session.data.status !== 'file_uploaded') {
-        await sendMessage(chatId, `❌ Send a file first!\n\nUse /upload to start.`);
+      // Find the last file uploaded by this user that needs a thumbnail
+      const fileRecord = await findFileWaitingForThumbnail(userId);
+      
+      if (!fileRecord) {
+        await sendMessage(chatId, 
+          `❓ No file waiting for thumbnail.\n\n` +
+          `Send a <b>product file</b> first, then send the thumbnail photo.`
+        );
         return new Response('OK', { status: 200, headers: corsHeaders });
       }
       
+      // Get the largest photo
       const photo = message.photo[message.photo.length - 1];
       
       try {
-        await updateDocument('temp_uploads', session.id, {
+        await updateDocument('temp_uploads', fileRecord.id, {
           thumbnailFileId: photo.file_id,
+          thumbnailUniqueId: photo.file_unique_id,
           status: 'complete',
           updatedAt: new Date().toISOString(),
         });
         
         await sendMessage(chatId,
-          `✅ <b>Upload Complete!</b>\n\n` +
-          `📄 File: ${session.data.fileName}\n` +
-          `🖼️ Thumbnail: Added\n` +
-          `🔑 Session: <code>${session.data.sessionId}</code>\n\n` +
-          `Paste Session ID in webapp!`
+          `✅ <b>Thumbnail Added!</b>\n\n` +
+          `📄 File: ${fileRecord.data.fileName}\n` +
+          `🖼️ Thumbnail: Added\n\n` +
+          `🔑 File ID:\n<code>${fileRecord.data.fileUniqueId}</code>\n\n` +
+          `Use this ID in webapp to fetch all data!`
         );
       } catch (error) {
         console.error('Error saving thumbnail:', error);
@@ -445,16 +415,11 @@ serve(async (req) => {
     }
 
     // === Default response ===
-    const session = await findActiveSession(userId);
-    if (session) {
-      if (session.data.status === 'pending') {
-        await sendMessage(chatId, `📤 Send your <b>product file</b>.`);
-      } else if (session.data.status === 'file_uploaded') {
-        await sendMessage(chatId, `🖼️ Send <b>thumbnail</b> or /skip`);
-      }
-    } else {
-      await sendMessage(chatId, `Use /upload to start.`);
-    }
+    await sendMessage(chatId, 
+      `Send me a <b>product file</b> to upload!\n\n` +
+      `📤 Supported: Any file type\n` +
+      `🖼️ After file, send photo for thumbnail`
+    );
 
     return new Response('OK', { status: 200, headers: corsHeaders });
 
