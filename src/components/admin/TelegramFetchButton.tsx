@@ -13,12 +13,14 @@ import { Download, Loader2, Check, AlertCircle, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { useTempUploads, TempUpload } from "@/hooks/useTempUploads";
 import { ProductFile } from "@/types/product";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TelegramFetchButtonProps {
   onDataFetched: (data: {
     title?: string;
     file?: ProductFile;
     thumbnailFileId?: string;
+    thumbnailUrl?: string;
     telegramUsername?: string;
   }) => void;
 }
@@ -71,34 +73,66 @@ export function TelegramFetchButton({ onDataFetched }: TelegramFetchButtonProps)
   const handleApply = async () => {
     if (!fetchedData) return;
 
-    // Prepare file data
-    const file: ProductFile | undefined = fetchedData.fileId ? {
-      id: Date.now().toString(),
-      name: fetchedData.fileName || "file",
-      telegramFileId: fetchedData.fileId,
-      sizeBytes: fetchedData.fileSize || 0,
-      mimeType: fetchedData.mimeType,
-    } : undefined;
-
-    // Call the callback with fetched data
-    onDataFetched({
-      title: fetchedData.title,
-      file,
-      thumbnailFileId: fetchedData.thumbnailFileId,
-      telegramUsername: fetchedData.telegramUsername || String(fetchedData.telegramUserId),
-    });
-
-    // Mark as used
+    setLoading(true);
+    
     try {
-      await markAsUsed(fetchedData.id);
-    } catch (error) {
-      console.error("Error marking as used:", error);
-    }
+      // Prepare file data
+      const file: ProductFile | undefined = fetchedData.fileId ? {
+        id: Date.now().toString(),
+        name: fetchedData.fileName || "file",
+        telegramFileId: fetchedData.fileId,
+        sizeBytes: fetchedData.fileSize || 0,
+        mimeType: fetchedData.mimeType,
+      } : undefined;
 
-    toast.success("Data applied to form!");
-    setOpen(false);
-    setSessionId("");
-    setFetchedData(null);
+      let thumbnailUrl: string | undefined;
+
+      // Upload thumbnail to ImageKit if exists
+      if (fetchedData.thumbnailFileId) {
+        toast.info("Uploading thumbnail to ImageKit...");
+        
+        const { data: imagekitData, error: imagekitError } = await supabase.functions.invoke('upload-to-imagekit', {
+          body: {
+            telegramFileId: fetchedData.thumbnailFileId,
+            fileName: `thumb_${fetchedData.sessionId}_${Date.now()}.jpg`,
+          },
+        });
+
+        if (imagekitError) {
+          console.error("ImageKit upload error:", imagekitError);
+          toast.error("Failed to upload thumbnail to ImageKit");
+        } else if (imagekitData?.url) {
+          thumbnailUrl = imagekitData.url;
+          toast.success("Thumbnail uploaded to ImageKit!");
+        }
+      }
+
+      // Call the callback with fetched data
+      onDataFetched({
+        title: fetchedData.title,
+        file,
+        thumbnailFileId: fetchedData.thumbnailFileId,
+        thumbnailUrl,
+        telegramUsername: fetchedData.telegramUsername || String(fetchedData.telegramUserId),
+      });
+
+      // Mark as used
+      try {
+        await markAsUsed(fetchedData.id);
+      } catch (error) {
+        console.error("Error marking as used:", error);
+      }
+
+      toast.success("Data applied to form!");
+      setOpen(false);
+      setSessionId("");
+      setFetchedData(null);
+    } catch (error) {
+      console.error("Error applying data:", error);
+      toast.error("Failed to apply data");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
