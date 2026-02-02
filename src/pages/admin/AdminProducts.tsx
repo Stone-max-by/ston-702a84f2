@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { useProducts } from "@/hooks/useProducts";
 import { Product, ProductType, productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
 import { ProductForm } from "@/components/admin/ProductForm";
-import { SeedDummyProducts } from "@/components/admin/SeedDummyProducts";
 import {
   Table,
   TableBody,
@@ -117,7 +116,6 @@ export default function AdminProducts() {
           <p className="text-sm text-muted-foreground">{products.length} total products (Firebase)</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <SeedDummyProducts />
           <Button onClick={handleAdd} className="gap-2 flex-1 sm:flex-none">
             <Plus className="w-4 h-4" />
             Add Product

@@ -53,13 +53,12 @@ export interface Product {
   updateDate?: string;
   releaseYear: number;
   
-  // Pricing
-  priceUSD: number;
+  // Pricing (INR)
+  price: number;
   originalPrice?: number;
   isFree: boolean;
   unlockByAds: boolean;
   adCreditsRequired: number;
-  coinPrice?: number;
   shortlinkUrl?: string; // URL shortener link for monetized downloads
   
   // Stats

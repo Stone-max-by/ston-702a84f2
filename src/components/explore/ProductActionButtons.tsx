@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Download,
-  Coins,
+  Wallet,
   Play,
   ExternalLink,
   CheckCircle,
@@ -25,7 +25,6 @@ async function sendFileToTelegram(
   product: Product
 ): Promise<boolean> {
   try {
-    // Send each file in the product
     for (const file of product.files) {
       const response = await supabase.functions.invoke('send-file', {
         body: {
@@ -50,7 +49,7 @@ async function sendFileToTelegram(
 
 export function ProductActionButtons({ product, onPurchaseComplete }: ProductActionButtonsProps) {
   const { requireAuth } = useRequireAuth();
-  const { coins, updateCoins, addPurchasedFile, hasFile } = useUserData();
+  const { balance, updateBalance, addPurchasedFile, hasFile } = useUserData();
   const { user } = useAuth();
   const [purchasing, setPurchasing] = useState(false);
   const [sendingFile, setSendingFile] = useState(false);
@@ -58,10 +57,10 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
   const isOwned = hasFile(product.id);
   
   // Determine which buttons to show
-  const hasCoins = (product.coinPrice || 0) > 0;
+  const hasPrice = (product.price || 0) > 0;
   const hasAds = product.unlockByAds && (product.adCreditsRequired || 0) > 0;
   const hasShortlink = !!product.shortlinkUrl;
-  const isFreeDownload = product.isFree && !hasAds && !hasCoins && !hasShortlink;
+  const isFreeDownload = product.isFree && !hasAds && !hasPrice && !hasShortlink;
 
   const sendFileAfterPurchase = async () => {
     if (!user?.telegramId) {
@@ -100,7 +99,7 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
     }
   };
 
-  const handleCoinPurchase = async () => {
+  const handleBalancePurchase = async () => {
     if (!requireAuth("purchase this product")) return;
     
     if (isOwned) {
@@ -109,11 +108,11 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
       return;
     }
     
-    const price = product.coinPrice || 0;
-    if (coins < price) {
+    const price = product.price || 0;
+    if (balance < price) {
       toast({ 
-        title: "Insufficient Coins", 
-        description: `You need ${price} coins, but have ${coins}`, 
+        title: "Insufficient Balance", 
+        description: `You need ₹${price}, but have ₹${balance}`, 
         variant: "destructive" 
       });
       return;
@@ -121,7 +120,7 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
     
     try {
       setPurchasing(true);
-      await updateCoins(coins - price);
+      await updateBalance(balance - price);
       await addPurchasedFile(product.id);
       toast({ title: "Purchase Successful!", description: `${product.title} is now yours.` });
       onPurchaseComplete?.();
@@ -138,8 +137,6 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
   const handleWatchAds = async () => {
     if (!requireAuth("unlock this product")) return;
     
-    // TODO: Implement actual ad watching flow
-    // For now, simulate ad completion and unlock
     toast({ 
       title: "Ads Feature Coming Soon", 
       description: "Ad unlock will be available soon!" 
@@ -159,7 +156,6 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
     }
     toast({ title: "Download Started", description: `Sending ${product.title} to Telegram...` });
     
-    // Send file to Telegram
     await sendFileAfterPurchase();
   };
 
@@ -213,21 +209,21 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
   // Multiple options available
   const buttons = [];
   
-  // Coins button
-  if (hasCoins) {
+  // Balance button (INR)
+  if (hasPrice) {
     buttons.push(
       <Button 
-        key="coins"
-        onClick={handleCoinPurchase} 
+        key="balance"
+        onClick={handleBalancePurchase} 
         disabled={purchasing || sendingFile}
         className="flex-1 h-11 text-sm font-semibold gap-2"
       >
         {purchasing || sendingFile ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <Coins className="w-4 h-4" />
+          <Wallet className="w-4 h-4" />
         )}
-        {purchasing ? "..." : sendingFile ? "Sending..." : `${product.coinPrice} Coins`}
+        {purchasing ? "..." : sendingFile ? "Sending..." : `₹${product.price}`}
       </Button>
     );
   }

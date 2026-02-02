@@ -93,9 +93,9 @@ export default function Explore() {
         case "downloads":
           return (b.downloads || 0) - (a.downloads || 0);
         case "price_low":
-          return (a.priceUSD || 0) - (b.priceUSD || 0);
+          return (a.price || 0) - (b.price || 0);
         case "price_high":
-          return (b.priceUSD || 0) - (a.priceUSD || 0);
+          return (b.price || 0) - (a.price || 0);
         default:
           return 0;
       }

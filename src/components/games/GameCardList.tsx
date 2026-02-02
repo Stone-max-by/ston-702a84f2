@@ -16,7 +16,7 @@ export function GameCardList({ game, onClick }: GameCardListProps) {
   // Get pricing info for badge
   const isFree = 'isFree' in game ? game.isFree : true;
   const unlockByAds = 'unlockByAds' in game ? game.unlockByAds : false;
-  const coinPrice = 'coinPrice' in game ? game.coinPrice : 0;
+  const price = 'price' in game ? (game.price as number) : 0;
 
   const handleCardClick = () => {
     if (onClick) {
@@ -51,7 +51,7 @@ export function GameCardList({ game, onClick }: GameCardListProps) {
             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-600 text-white font-medium">Ads</span>
           ) : (
             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground font-medium">
-              {coinPrice}🪙
+              ₹{price}
             </span>
           )}
         </div>

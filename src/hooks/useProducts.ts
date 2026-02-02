@@ -14,17 +14,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product, ProductType } from "@/types/product";
-import { dummyProducts } from "@/data/dummyProducts";
-
-// Convert dummy products to full Product format
-const getDummyProductsWithIds = (): Product[] => {
-  return dummyProducts.map((p, index) => ({
-    ...p,
-    id: `dummy-${index + 1}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })) as Product[];
-};
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);

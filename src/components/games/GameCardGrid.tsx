@@ -20,7 +20,7 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
   // Get pricing info for badge
   const isFree = 'isFree' in game ? game.isFree : true;
   const unlockByAds = 'unlockByAds' in game ? game.unlockByAds : false;
-  const coinPrice = 'coinPrice' in game ? game.coinPrice : 0;
+  const price = 'price' in game ? (game.price as number) : 0;
 
   const handleCardClick = () => {
     if (onClick) {
@@ -62,7 +62,7 @@ export function GameCardGrid({ game, onClick }: GameCardGridProps) {
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-600/90 text-white">Ads</span>
           ) : (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/90 text-primary-foreground">
-              {coinPrice} 🪙
+              ₹{price}
             </span>
           )}
         </div>

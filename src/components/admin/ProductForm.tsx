@@ -60,12 +60,11 @@ const defaultProduct: Partial<Product> = {
   uploadDate: new Date().toISOString().split("T")[0],
   updateDate: "",
   releaseYear: new Date().getFullYear(),
-  priceUSD: 0,
+  price: 0,
   originalPrice: 0,
   isFree: true,
   unlockByAds: false,
   adCreditsRequired: 0,
-  coinPrice: 0,
   shortlinkUrl: "",
   downloads: 0,
   views: 0,
@@ -109,7 +108,7 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
       sizeFormatted: formatFileSize(totalSize),
       filesCount: formData.files?.length || 0,
       telegramFileIds: formData.files?.map(f => f.telegramFileId) || [],
-      isFree: (formData.priceUSD || 0) === 0,
+      isFree: (formData.price || 0) === 0,
       updatedAt: new Date().toISOString(),
     });
     onClose();
@@ -549,41 +548,31 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
             <TabsContent value="pricing" className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="priceUSD">Price (USD)</Label>
+                  <Label htmlFor="price">Price (₹ INR)</Label>
                   <Input
-                    id="priceUSD"
+                    id="price"
                     type="number"
-                    step="0.01"
-                    value={formData.priceUSD || ""}
-                    onChange={(e) => updateField("priceUSD", parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
+                    step="1"
+                    value={formData.price || ""}
+                    onChange={(e) => updateField("price", parseFloat(e.target.value) || 0)}
+                    placeholder="0"
                     className="bg-background border-white/10"
                   />
+                  <p className="text-xs text-muted-foreground">Set to 0 for free product</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="originalPrice">Original Price</Label>
+                  <Label htmlFor="originalPrice">Original Price (₹)</Label>
                   <Input
                     id="originalPrice"
                     type="number"
-                    step="0.01"
+                    step="1"
                     value={formData.originalPrice || ""}
                     onChange={(e) => updateField("originalPrice", parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
+                    placeholder="0"
                     className="bg-background border-white/10"
                   />
+                  <p className="text-xs text-muted-foreground">For showing discount</p>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="coinPrice">Coin Price</Label>
-                <Input
-                  id="coinPrice"
-                  type="number"
-                  value={formData.coinPrice || ""}
-                  onChange={(e) => updateField("coinPrice", parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                  className="bg-background border-white/10"
-                />
               </div>
 
               <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-white/10">
