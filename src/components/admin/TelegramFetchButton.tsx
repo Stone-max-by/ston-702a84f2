@@ -19,6 +19,7 @@ interface TelegramFetchButtonProps {
     title?: string;
     file?: ProductFile;
     thumbnailFileId?: string;
+    telegramUsername?: string;
   }) => void;
 }
 
@@ -84,6 +85,7 @@ export function TelegramFetchButton({ onDataFetched }: TelegramFetchButtonProps)
       title: fetchedData.title,
       file,
       thumbnailFileId: fetchedData.thumbnailFileId,
+      telegramUsername: fetchedData.telegramUsername || String(fetchedData.telegramUserId),
     });
 
     // Mark as used
