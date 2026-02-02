@@ -148,16 +148,31 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
     title?: string;
     file?: ProductFile;
     thumbnailFileId?: string;
+    telegramUsername?: string;
   }) => {
+    const updates: Partial<Product> = {};
+    
     if (data.title) {
-      updateField("title", data.title);
-      updateField("slug", generateSlug(data.title));
+      updates.title = data.title;
+      updates.slug = generateSlug(data.title);
+      updates.metaTitle = data.title; // Auto-fill meta title
     }
-    if (data.file) {
-      updateField("files", [...(formData.files || []), data.file]);
+    
+    if (data.telegramUsername) {
+      updates.uploader = data.telegramUsername;
+      updates.credits = `Uploaded by @${data.telegramUsername}`;
+      updates.uploaderId = data.telegramUsername;
     }
-    // Note: thumbnailFileId can be used if you implement Telegram file URL fetching
-    // For now, users can manually upload thumbnail via Firebase
+    
+    // Set upload date to today
+    updates.uploadDate = new Date().toISOString().split("T")[0];
+    
+    // Apply all updates at once
+    setFormData(prev => ({
+      ...prev,
+      ...updates,
+      files: data.file ? [...(prev.files || []), data.file] : prev.files,
+    }));
   };
 
   const toggleArrayItem = (key: "platform" | "language", item: string) => {
