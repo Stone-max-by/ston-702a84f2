@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,8 +8,6 @@ const corsHeaders = {
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
 const IMAGEKIT_PRIVATE_KEY = Deno.env.get('IMAGEKIT_PRIVATE_KEY');
-const IMAGEKIT_PUBLIC_KEY = 'public_2OlFlEWgrXr8fv3cVgXYttLHCII=';
-const IMAGEKIT_URL_ENDPOINT = 'https://ik.imagekit.io/PRGujju';
 
 serve(async (req) => {
   // Handle CORS
@@ -56,7 +55,8 @@ serve(async (req) => {
     }
 
     const fileBuffer = await fileRes.arrayBuffer();
-    const base64File = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+    // Use Deno's base64 encoder - pass ArrayBuffer directly
+    const base64File = base64Encode(fileBuffer);
     
     console.log('File downloaded, size:', fileBuffer.byteLength);
 
@@ -69,7 +69,8 @@ serve(async (req) => {
     formData.append('folder', '/thumbnails');
 
     // ImageKit uses Basic Auth with private key
-    const authHeader = btoa(`${IMAGEKIT_PRIVATE_KEY}:`);
+    const authString = `${IMAGEKIT_PRIVATE_KEY}:`;
+    const authHeader = base64Encode(new TextEncoder().encode(authString).buffer);
 
     const uploadRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
       method: 'POST',
