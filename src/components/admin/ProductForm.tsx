@@ -30,6 +30,7 @@ import {
 } from "@/types/product";
 import { ImageUpload, MultiImageUpload } from "./ImageUpload";
 import { TelegramFileIdButton } from "./TelegramFileIdButton";
+import { TelegramFetchButton } from "./TelegramFetchButton";
 
 interface ProductFormProps {
   open: boolean;
@@ -143,6 +144,23 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
     updateField("files", formData.files?.filter((f) => f.id !== id) || []);
   };
 
+  // Handle data fetched from Telegram
+  const handleTelegramData = (data: {
+    title?: string;
+    file?: ProductFile;
+    thumbnailFileId?: string;
+  }) => {
+    if (data.title) {
+      updateField("title", data.title);
+      updateField("slug", generateSlug(data.title));
+    }
+    if (data.file) {
+      updateField("files", [...(formData.files || []), data.file]);
+    }
+    // Note: thumbnailFileId can be used if you implement Telegram file URL fetching
+    // For now, users can manually upload thumbnail via Firebase
+  };
+
   const toggleArrayItem = (key: "platform" | "language", item: string) => {
     const arr = formData[key] || [];
     if (arr.includes(item)) {
@@ -158,9 +176,14 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-card border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-foreground">
-            {mode === "add" ? "Add New Product" : "Edit Product"}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-foreground">
+              {mode === "add" ? "Add New Product" : "Edit Product"}
+            </DialogTitle>
+            {mode === "add" && (
+              <TelegramFetchButton onDataFetched={handleTelegramData} />
+            )}
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
