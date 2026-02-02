@@ -11,12 +11,11 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
 const IMAGEKIT_PRIVATE_KEY = Deno.env.get('IMAGEKIT_PRIVATE_KEY');
 
 // Settings for image optimization
-const MAX_WIDTH = 800; // Max width for thumbnails
-const MAX_HEIGHT = 800; // Max height for thumbnails
-const PNG_COMPRESSION = 9; // 0-9, higher = smaller file
+const MAX_WIDTH = 600; // Smaller for thumbnails
+const MAX_HEIGHT = 600;
+const JPEG_QUALITY = 70; // 0-100, lower = smaller file
 
 serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -60,50 +59,48 @@ serve(async (req) => {
       );
     }
 
-    const originalBuffer = await fileRes.arrayBuffer();
+    const originalBuffer = new Uint8Array(await fileRes.arrayBuffer());
     const originalSize = originalBuffer.byteLength;
     console.log('Original file size:', originalSize);
 
-    // Step 3: Resize and optimize image using imagescript
+    // Step 3: Resize and convert to JPEG (much smaller than PNG)
     let optimizedBuffer: Uint8Array;
-    let mimeType = 'image/png';
     
     try {
-      const image = await Image.decode(new Uint8Array(originalBuffer));
-      
-      // Resize if larger than max dimensions while maintaining aspect ratio
-      let resizedImage = image;
+      const image = await Image.decode(originalBuffer);
+      console.log(`Original dimensions: ${image.width}x${image.height}`);
+
+      // Resize if needed (maintain aspect ratio)
+      let processedImage = image;
       if (image.width > MAX_WIDTH || image.height > MAX_HEIGHT) {
         const ratio = Math.min(MAX_WIDTH / image.width, MAX_HEIGHT / image.height);
         const newWidth = Math.round(image.width * ratio);
         const newHeight = Math.round(image.height * ratio);
-        resizedImage = image.resize(newWidth, newHeight);
-        console.log(`Resized from ${image.width}x${image.height} to ${newWidth}x${newHeight}`);
+        processedImage = image.resize(newWidth, newHeight);
+        console.log(`Resized to: ${newWidth}x${newHeight}`);
       }
-      
-      // Encode as PNG with compression (imagescript doesn't support WebP natively)
-      // ImageKit will auto-convert to WebP when served with ?f=auto or tr:f-webp
-      optimizedBuffer = await resizedImage.encode(PNG_COMPRESSION);
-      console.log('Optimized size:', optimizedBuffer.byteLength, `(${Math.round((1 - optimizedBuffer.byteLength / originalSize) * 100)}% smaller)`);
+
+      // Encode as JPEG with quality compression
+      optimizedBuffer = await processedImage.encodeJPEG(JPEG_QUALITY);
+      console.log(`JPEG size: ${optimizedBuffer.byteLength} bytes (${Math.round((1 - optimizedBuffer.byteLength / originalSize) * 100)}% smaller)`);
     } catch (imageError) {
-      console.error('Image processing error, using original:', imageError);
-      // If image processing fails, use original
-      optimizedBuffer = new Uint8Array(originalBuffer);
+      console.error('Image processing error:', imageError);
+      throw new Error('Failed to process image: ' + String(imageError));
     }
 
-    // Step 4: Upload to ImageKit
+    // Step 4: Upload to ImageKit with WebP transformation
     const baseFileName = fileName?.replace(/\.[^.]+$/, '') || `thumbnail_${Date.now()}`;
-    const uploadFileName = `${baseFileName}.png`;
+    // Upload as JPEG, ImageKit will serve as WebP via URL transformation
+    const uploadFileName = `${baseFileName}.jpg`;
     
-    // Convert Uint8Array to base64 properly
-    const base64File = base64Encode(new Uint8Array(optimizedBuffer) as unknown as ArrayBuffer);
+    const base64File = base64Encode(optimizedBuffer as unknown as ArrayBuffer);
     
     const formData = new FormData();
-    formData.append('file', `data:${mimeType};base64,${base64File}`);
+    formData.append('file', `data:image/jpeg;base64,${base64File}`);
     formData.append('fileName', uploadFileName);
     formData.append('folder', '/thumbnails');
 
-    // ImageKit uses Basic Auth with private key
+    // ImageKit Basic Auth
     const authString = `${IMAGEKIT_PRIVATE_KEY}:`;
     const authBytes = new TextEncoder().encode(authString);
     const authHeader = base64Encode(authBytes as unknown as ArrayBuffer);
@@ -126,23 +123,27 @@ serve(async (req) => {
       );
     }
 
-    // Return URL with WebP transformation parameter for optimized delivery
-    // ImageKit will auto-convert to WebP when client supports it
-    const webpUrl = uploadResult.url ? uploadResult.url.replace('/thumbnails/', '/thumbnails/tr:f-webp,q-80/') : uploadResult.url;
+    // Return WebP URL via ImageKit transformation (automatic format conversion)
+    // This serves WebP to browsers that support it, JPEG otherwise
+    const webpUrl = uploadResult.url 
+      ? uploadResult.url.replace('/thumbnails/', '/thumbnails/tr:f-webp,q-80/')
+      : uploadResult.url;
 
     return new Response(
       JSON.stringify({
         success: true,
-        url: webpUrl, // WebP optimized URL
-        originalUrl: uploadResult.url, // Original URL
+        url: webpUrl, // WebP optimized delivery URL
+        originalUrl: uploadResult.url,
         thumbnailUrl: uploadResult.thumbnailUrl,
         fileId: uploadResult.fileId,
         name: uploadResult.name,
         optimization: {
           originalSize,
           uploadedSize: optimizedBuffer.byteLength,
+          savedBytes: originalSize - optimizedBuffer.byteLength,
           savedPercent: Math.round((1 - optimizedBuffer.byteLength / originalSize) * 100),
-          format: 'webp (via ImageKit transform)',
+          format: 'jpeg (served as webp via ImageKit CDN)',
+          quality: JPEG_QUALITY,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
