@@ -10,6 +10,7 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product, ProductType } from "@/types/product";
@@ -102,6 +103,21 @@ export function useProducts() {
     return products.filter((p) => p.type === type);
   };
 
+  // Clear all products from Firestore
+  const clearAllProducts = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "products"));
+      const deletePromises = snapshot.docs.map((docSnap) => 
+        deleteDoc(doc(db, "products", docSnap.id))
+      );
+      await Promise.all(deletePromises);
+      return snapshot.size;
+    } catch (error) {
+      console.error("Error clearing products:", error);
+      throw error;
+    }
+  };
+
   return {
     products,
     loading,
@@ -109,5 +125,6 @@ export function useProducts() {
     updateProduct,
     deleteProduct,
     getProductsByType,
+    clearAllProducts,
   };
 }
