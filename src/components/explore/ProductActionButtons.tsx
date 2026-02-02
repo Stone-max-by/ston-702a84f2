@@ -11,16 +11,49 @@ import {
 import { Product } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useUserData } from "@/hooks/useUserData";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProductActionButtonsProps {
   product: Product;
+  onPurchaseComplete?: () => void;
 }
 
-export function ProductActionButtons({ product }: ProductActionButtonsProps) {
+async function sendFileToTelegram(
+  telegramUserId: number,
+  product: Product
+): Promise<boolean> {
+  try {
+    // Send each file in the product
+    for (const file of product.files) {
+      const response = await supabase.functions.invoke('send-file', {
+        body: {
+          telegramUserId,
+          telegramFileId: file.telegramFileId,
+          fileName: file.name,
+          productTitle: product.title,
+        },
+      });
+
+      if (response.error) {
+        console.error('Error sending file:', response.error);
+        return false;
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error('Failed to send file to Telegram:', error);
+    return false;
+  }
+}
+
+export function ProductActionButtons({ product, onPurchaseComplete }: ProductActionButtonsProps) {
   const { requireAuth } = useRequireAuth();
   const { coins, updateCoins, addPurchasedFile, hasFile } = useUserData();
+  const { user } = useAuth();
   const [purchasing, setPurchasing] = useState(false);
+  const [sendingFile, setSendingFile] = useState(false);
 
   const isOwned = hasFile(product.id);
   
@@ -30,11 +63,49 @@ export function ProductActionButtons({ product }: ProductActionButtonsProps) {
   const hasShortlink = !!product.shortlinkUrl;
   const isFreeDownload = product.isFree && !hasAds && !hasCoins && !hasShortlink;
 
+  const sendFileAfterPurchase = async () => {
+    if (!user?.telegramId) {
+      toast({ 
+        title: "Cannot Send File", 
+        description: "Telegram account not linked", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (product.files.length === 0) {
+      toast({ 
+        title: "No Files", 
+        description: "This product has no downloadable files", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setSendingFile(true);
+    const success = await sendFileToTelegram(user.telegramId, product);
+    setSendingFile(false);
+
+    if (success) {
+      toast({ 
+        title: "File Sent! 📨", 
+        description: "Check your Telegram messages" 
+      });
+    } else {
+      toast({ 
+        title: "Failed to Send", 
+        description: "File purchased but couldn't send to Telegram. Try downloading again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const handleCoinPurchase = async () => {
     if (!requireAuth("purchase this product")) return;
     
     if (isOwned) {
-      toast({ title: "Already Owned", description: "You already own this product!" });
+      // Already owned - just send file again
+      await sendFileAfterPurchase();
       return;
     }
     
@@ -53,6 +124,10 @@ export function ProductActionButtons({ product }: ProductActionButtonsProps) {
       await updateCoins(coins - price);
       await addPurchasedFile(product.id);
       toast({ title: "Purchase Successful!", description: `${product.title} is now yours.` });
+      onPurchaseComplete?.();
+      
+      // Send file to Telegram after successful purchase
+      await sendFileAfterPurchase();
     } catch {
       toast({ title: "Purchase Failed", description: "Please try again.", variant: "destructive" });
     } finally {
@@ -60,13 +135,15 @@ export function ProductActionButtons({ product }: ProductActionButtonsProps) {
     }
   };
 
-  const handleWatchAds = () => {
+  const handleWatchAds = async () => {
     if (!requireAuth("unlock this product")) return;
+    
+    // TODO: Implement actual ad watching flow
+    // For now, simulate ad completion and unlock
     toast({ 
-      title: "Watch Ads to Unlock", 
-      description: `Watch ${product.adCreditsRequired} ad(s) to unlock this download` 
+      title: "Ads Feature Coming Soon", 
+      description: "Ad unlock will be available soon!" 
     });
-    // TODO: Implement ad watching flow
   };
 
   const handleShortlink = () => {
@@ -80,8 +157,17 @@ export function ProductActionButtons({ product }: ProductActionButtonsProps) {
     if (!isOwned) {
       await addPurchasedFile(product.id);
     }
-    toast({ title: "Download Started", description: `Downloading ${product.title}...` });
-    // TODO: Trigger actual download
+    toast({ title: "Download Started", description: `Sending ${product.title} to Telegram...` });
+    
+    // Send file to Telegram
+    await sendFileAfterPurchase();
+  };
+
+  const handleDownloadOwned = async () => {
+    if (!requireAuth("download this product")) return;
+    
+    toast({ title: "Sending...", description: `Sending ${product.title} to Telegram...` });
+    await sendFileAfterPurchase();
   };
 
   // If already owned, show download button
@@ -89,11 +175,16 @@ export function ProductActionButtons({ product }: ProductActionButtonsProps) {
     return (
       <div className="space-y-2">
         <Button 
-          onClick={handleFreeDownload} 
+          onClick={handleDownloadOwned} 
+          disabled={sendingFile}
           className="w-full h-11 text-sm font-semibold gap-2 bg-green-600 hover:bg-green-700"
         >
-          <CheckCircle className="w-4 h-4" />
-          Download (Owned)
+          {sendingFile ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CheckCircle className="w-4 h-4" />
+          )}
+          {sendingFile ? "Sending..." : "Download (Owned)"}
         </Button>
       </div>
     );
@@ -105,10 +196,15 @@ export function ProductActionButtons({ product }: ProductActionButtonsProps) {
       <div className="space-y-2">
         <Button 
           onClick={handleFreeDownload} 
+          disabled={sendingFile}
           className="w-full h-11 text-sm font-semibold gap-2 bg-green-600 hover:bg-green-700"
         >
-          <Download className="w-4 h-4" />
-          Download Free
+          {sendingFile ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          {sendingFile ? "Sending..." : "Download Free"}
         </Button>
       </div>
     );
@@ -123,15 +219,15 @@ export function ProductActionButtons({ product }: ProductActionButtonsProps) {
       <Button 
         key="coins"
         onClick={handleCoinPurchase} 
-        disabled={purchasing}
+        disabled={purchasing || sendingFile}
         className="flex-1 h-11 text-sm font-semibold gap-2"
       >
-        {purchasing ? (
+        {purchasing || sendingFile ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
           <Coins className="w-4 h-4" />
         )}
-        {purchasing ? "..." : `${product.coinPrice} Coins`}
+        {purchasing ? "..." : sendingFile ? "Sending..." : `${product.coinPrice} Coins`}
       </Button>
     );
   }

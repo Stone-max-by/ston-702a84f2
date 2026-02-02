@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { useUserData } from "@/hooks/useUserData";
+import { useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,9 +32,37 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
-import { productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
+import { productTypeLabels, productTypeIcons, formatFileSize, Product } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+async function sendFileToTelegram(
+  telegramUserId: number,
+  product: Product
+): Promise<boolean> {
+  try {
+    for (const file of product.files) {
+      const response = await supabase.functions.invoke('send-file', {
+        body: {
+          telegramUserId,
+          telegramFileId: file.telegramFileId,
+          fileName: file.name,
+          productTitle: product.title,
+        },
+      });
+
+      if (response.error) {
+        console.error('Error sending file:', response.error);
+        return false;
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error('Failed to send file to Telegram:', error);
+    return false;
+  }
+}
 
 const ProductDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -41,21 +70,61 @@ const ProductDetail = () => {
   const { products, loading } = useProducts();
   const { requireAuth } = useRequireAuth();
   const { coins, addCoins, addPurchasedFile, hasFile, userData } = useUserData();
+  const { user } = useAuth();
   const [purchasing, setPurchasing] = useState(false);
+  const [sendingFile, setSendingFile] = useState(false);
 
   const product = products.find((p) => p.slug === slug || p.id === slug);
   const isOwned = product ? hasFile(product.id) : false;
+
+  const sendFileAfterPurchase = async () => {
+    if (!user?.telegramId || !product) {
+      toast({ 
+        title: "Cannot Send File", 
+        description: "Telegram account not linked", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (product.files.length === 0) {
+      toast({ 
+        title: "No Files", 
+        description: "This product has no downloadable files", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setSendingFile(true);
+    const success = await sendFileToTelegram(user.telegramId, product);
+    setSendingFile(false);
+
+    if (success) {
+      toast({ 
+        title: "File Sent! 📨", 
+        description: "Check your Telegram messages" 
+      });
+    } else {
+      toast({ 
+        title: "Failed to Send", 
+        description: "File purchased but couldn't send to Telegram. Try downloading again.", 
+        variant: "destructive" 
+      });
+    }
+  };
 
   const handleAction = async () => {
     if (!requireAuth("access this product")) return;
     if (!product) return;
     
-    // Already owned - just download
+    // Already owned - just send file
     if (isOwned) {
       toast({
-        title: "Download Started",
-        description: `Downloading ${product.title}...`,
+        title: "Sending...",
+        description: `Sending ${product.title} to Telegram...`,
       });
+      await sendFileAfterPurchase();
       return;
     }
     
@@ -64,8 +133,9 @@ const ProductDetail = () => {
       await addPurchasedFile(product.id);
       toast({
         title: "Download Started",
-        description: `Downloading ${product.title}...`,
+        description: `Sending ${product.title} to Telegram...`,
       });
+      await sendFileAfterPurchase();
       return;
     }
     
@@ -97,8 +167,10 @@ const ProductDetail = () => {
       await addPurchasedFile(product.id);
       toast({
         title: "Purchase Successful!",
-        description: `${product.title} is now yours. Downloading...`,
+        description: `${product.title} is now yours. Sending to Telegram...`,
       });
+      // Send file to Telegram after successful purchase
+      await sendFileAfterPurchase();
     } catch (error) {
       toast({
         title: "Purchase Failed",
@@ -360,23 +432,25 @@ const ProductDetail = () => {
 
         {/* Fixed Action Button */}
         <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-          {isOwned ? (
+        {isOwned ? (
             <Button
               onClick={handleAction}
+              disabled={sendingFile}
               className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700"
               size="lg"
             >
-              <CheckCircle className="w-5 h-5" />
-              Download (Owned)
+              {sendingFile ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+              {sendingFile ? "Sending..." : "Download (Owned)"}
             </Button>
           ) : product.isFree && !product.unlockByAds ? (
             <Button
               onClick={handleAction}
+              disabled={sendingFile}
               className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700"
               size="lg"
             >
-              <Download className="w-5 h-5" />
-              Download Free
+              {sendingFile ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              {sendingFile ? "Sending..." : "Download Free"}
             </Button>
           ) : product.unlockByAds ? (
             <Button
@@ -390,16 +464,16 @@ const ProductDetail = () => {
           ) : (
             <Button
               onClick={handleAction}
-              disabled={purchasing}
+              disabled={purchasing || sendingFile}
               className="w-full h-12 text-base font-semibold gap-2"
               size="lg"
             >
-              {purchasing ? (
+              {purchasing || sendingFile ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <Coins className="w-5 h-5" />
               )}
-              {purchasing ? "Processing..." : `Buy for ${product.coinPrice} Coins`}
+              {purchasing ? "Processing..." : sendingFile ? "Sending..." : `Buy for ${product.coinPrice} Coins`}
             </Button>
           )}
         </div>
