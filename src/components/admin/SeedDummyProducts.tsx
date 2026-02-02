@@ -3,11 +3,35 @@ import { Button } from "@/components/ui/button";
 import { useProducts } from "@/hooks/useProducts";
 import { dummyProducts } from "@/data/dummyProducts";
 import { toast } from "sonner";
-import { Database, Loader2 } from "lucide-react";
+import { Database, Loader2, Trash2 } from "lucide-react";
 
 export function SeedDummyProducts() {
   const [loading, setLoading] = useState(false);
-  const { addProduct, products } = useProducts();
+  const [clearing, setClearing] = useState(false);
+  const { addProduct, products, clearAllProducts } = useProducts();
+
+  const handleClear = async () => {
+    if (products.length === 0) {
+      toast.info("No products to clear");
+      return;
+    }
+
+    const confirm = window.confirm(
+      `Are you sure you want to delete all ${products.length} products? This cannot be undone.`
+    );
+    if (!confirm) return;
+
+    setClearing(true);
+    try {
+      const count = await clearAllProducts();
+      toast.success(`Cleared ${count} products from Firestore`);
+    } catch (error) {
+      console.error("Error clearing products:", error);
+      toast.error("Failed to clear products");
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const handleSeed = async () => {
     if (products.length > 0) {
@@ -23,7 +47,6 @@ export function SeedDummyProducts() {
       for (const product of dummyProducts) {
         await addProduct(product);
         added++;
-        toast.success(`Added: ${product.title}`);
       }
       toast.success(`Successfully added ${added} dummy products!`);
     } catch (error) {
@@ -35,18 +58,33 @@ export function SeedDummyProducts() {
   };
 
   return (
-    <Button 
-      onClick={handleSeed} 
-      disabled={loading}
-      variant="outline"
-      className="gap-2"
-    >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Database className="h-4 w-4" />
-      )}
-      {loading ? "Adding Products..." : "Add Dummy Products"}
-    </Button>
+    <div className="flex gap-2">
+      <Button 
+        onClick={handleClear} 
+        disabled={clearing || loading}
+        variant="destructive"
+        className="gap-2"
+      >
+        {clearing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Trash2 className="h-4 w-4" />
+        )}
+        {clearing ? "Clearing..." : "Clear All"}
+      </Button>
+      <Button 
+        onClick={handleSeed} 
+        disabled={loading || clearing}
+        variant="outline"
+        className="gap-2"
+      >
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Database className="h-4 w-4" />
+        )}
+        {loading ? "Adding..." : "Add Dummy"}
+      </Button>
+    </div>
   );
 }
