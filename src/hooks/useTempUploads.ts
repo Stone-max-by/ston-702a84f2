@@ -18,30 +18,34 @@ import { db } from "@/lib/firebase";
 
 export interface TempUpload {
   id: string;
-  sessionId: string;
+  fileUniqueId: string; // Telegram's file_unique_id - consistent identifier
   telegramUserId: number;
   telegramUsername?: string;
   
-  // File data (step 1)
+  // File data
   fileId?: string;
   fileName?: string;
   fileSize?: number;
   fileSizeFormatted?: string;
   mimeType?: string;
   
-  // Thumbnail data (step 2)
+  // Thumbnail data
   thumbnailFileId?: string;
+  thumbnailUniqueId?: string;
+  thumbnailUrl?: string; // ImageKit URL after upload
   
-  // Extracted title from caption
+  // Extracted title from filename
   title?: string;
   
-  // Status: pending -> file_uploaded -> thumbnail_uploaded -> complete -> used
-  status: 'pending' | 'file_uploaded' | 'thumbnail_uploaded' | 'complete' | 'used';
+  // Status: pending -> file_uploaded -> complete
+  status: 'pending' | 'file_uploaded' | 'complete';
+  
+  // Usage count - how many times this file was used
+  usageCount: number;
   
   // Timestamps
   createdAt: string;
   updatedAt: string;
-  expiresAt?: string;
 }
 
 function formatFileSize(bytes: number): string {
@@ -51,21 +55,14 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
 }
 
-// Generate a short session ID
-function generateSessionId(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
 export function useTempUploads() {
   const [uploads, setUploads] = useState<TempUpload[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen to all non-used temp uploads
+    // Listen to all temp uploads ordered by creation date
     const q = query(
       collection(db, "temp_uploads"),
-      where("status", "!=", "used"),
-      orderBy("status"),
       orderBy("createdAt", "desc")
     );
     
@@ -76,8 +73,9 @@ export function useTempUploads() {
         uploadList.push({
           id: doc.id,
           ...data,
-          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          usageCount: data.usageCount || 0,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
         } as TempUpload);
       });
       setUploads(uploadList);
@@ -91,12 +89,12 @@ export function useTempUploads() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch a single upload by session ID
-  const fetchBySessionId = async (sessionId: string): Promise<TempUpload | null> => {
+  // Fetch a single upload by file unique ID
+  const fetchByFileUniqueId = async (fileUniqueId: string): Promise<TempUpload | null> => {
     try {
       const q = query(
         collection(db, "temp_uploads"),
-        where("sessionId", "==", sessionId.toUpperCase())
+        where("fileUniqueId", "==", fileUniqueId.trim())
       );
       const snapshot = await getDocs(q);
       
@@ -104,13 +102,14 @@ export function useTempUploads() {
         return null;
       }
       
-      const doc = snapshot.docs[0];
-      const data = doc.data();
+      const docSnap = snapshot.docs[0];
+      const data = docSnap.data();
       return {
-        id: doc.id,
+        id: docSnap.id,
         ...data,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        usageCount: data.usageCount || 0,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
       } as TempUpload;
     } catch (error) {
       console.error("Error fetching temp upload:", error);
@@ -118,16 +117,34 @@ export function useTempUploads() {
     }
   };
 
-  // Mark an upload as used
-  const markAsUsed = async (id: string) => {
+  // Increment usage count when file is used in a product
+  const incrementUsageCount = async (id: string) => {
+    try {
+      const docRef = doc(db, "temp_uploads", id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const currentCount = docSnap.data().usageCount || 0;
+        await updateDoc(docRef, {
+          usageCount: currentCount + 1,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error("Error incrementing usage count:", error);
+      throw error;
+    }
+  };
+
+  // Update thumbnail URL after ImageKit upload
+  const updateThumbnailUrl = async (id: string, thumbnailUrl: string) => {
     try {
       const docRef = doc(db, "temp_uploads", id);
       await updateDoc(docRef, {
-        status: "used",
+        thumbnailUrl,
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
-      console.error("Error marking upload as used:", error);
+      console.error("Error updating thumbnail URL:", error);
       throw error;
     }
   };
@@ -142,34 +159,13 @@ export function useTempUploads() {
     }
   };
 
-  // Create a new session (for manual creation if needed)
-  const createSession = async (telegramUserId: number, telegramUsername?: string): Promise<string> => {
-    const sessionId = generateSessionId();
-    try {
-      await addDoc(collection(db, "temp_uploads"), {
-        sessionId,
-        telegramUserId,
-        telegramUsername,
-        status: "pending",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
-      });
-      return sessionId;
-    } catch (error) {
-      console.error("Error creating session:", error);
-      throw error;
-    }
-  };
-
   return {
     uploads,
     loading,
-    fetchBySessionId,
-    markAsUsed,
+    fetchByFileUniqueId,
+    incrementUsageCount,
+    updateThumbnailUrl,
     deleteUpload,
-    createSession,
-    generateSessionId,
     formatFileSize,
   };
 }
