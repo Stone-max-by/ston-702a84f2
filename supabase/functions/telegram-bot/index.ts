@@ -185,7 +185,9 @@ async function findByFileUniqueId(fileUniqueId: string): Promise<{ id: string; d
 // Find file waiting for thumbnail (last file uploaded by user without thumbnail)
 async function findFileWaitingForThumbnail(telegramUserId: number): Promise<{ id: string; data: Record<string, any> } | null> {
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`;
+  console.log('Finding file waiting for thumbnail, user:', telegramUserId);
   
+  // Simpler query - just filter by user and status, no orderBy to avoid composite index requirement
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -213,26 +215,47 @@ async function findFileWaitingForThumbnail(telegramUserId: number): Promise<{ id
             ]
           }
         },
-        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
-        limit: 1
+        limit: 10 // Get up to 10 and pick the most recent in code
       }
     }),
   });
   
   const responseText = await response.text();
+  console.log('Find file waiting response:', responseText);
   
   if (!response.ok) {
+    console.error('Firestore query failed:', response.status);
     return null;
   }
   
   const results = JSON.parse(responseText);
-  if (results && results.length > 0 && results[0].document) {
-    const doc = results[0].document;
-    const docPath = doc.name.split('/');
-    return { id: docPath[docPath.length - 1], data: convertFromFirestoreFormat(doc.fields) };
+  
+  // Filter and find the most recent one
+  const docs = results
+    .filter((r: any) => r.document)
+    .map((r: any) => {
+      const doc = r.document;
+      const docPath = doc.name.split('/');
+      return { 
+        id: docPath[docPath.length - 1], 
+        data: convertFromFirestoreFormat(doc.fields) 
+      };
+    });
+  
+  if (docs.length === 0) {
+    console.log('No files waiting for thumbnail found');
+    return null;
   }
   
-  return null;
+  // Sort by createdAt descending and return the most recent
+  docs.sort((a: any, b: any) => {
+    const aTime = new Date(a.data.createdAt || 0).getTime();
+    const bTime = new Date(b.data.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+  
+  console.log('Found file waiting for thumbnail:', docs[0].id);
+  return docs[0];
 }
 
 serve(async (req) => {
