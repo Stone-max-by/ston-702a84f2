@@ -7,9 +7,8 @@ const corsHeaders = {
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
 
-// Firebase configuration - same as frontend
+// Firebase configuration
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAPuV5P65P76t1XdFqyjbTgdxEUqG5aviY",
   projectId: "gtwy-bf375",
 };
 
@@ -17,7 +16,6 @@ interface TelegramFile {
   file_id: string;
   file_unique_id: string;
   file_size?: number;
-  file_path?: string;
 }
 
 interface TelegramMessage {
@@ -36,35 +34,21 @@ interface TelegramMessage {
     file_name?: string;
     mime_type?: string;
     file_size?: number;
-    thumbnail?: TelegramFile;
   };
   photo?: TelegramFile[];
-  caption?: string;
   text?: string;
-  reply_to_message?: TelegramMessage;
 }
 
-// User session states
-const userSessions: Map<number, { 
-  sessionId: string; 
-  step: 'awaiting_file' | 'awaiting_thumbnail' | 'complete';
-  fileData?: any;
-}> = new Map();
-
-async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
+async function sendMessage(chatId: number, text: string) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-  const body: any = {
-    chat_id: chatId,
-    text: text,
-    parse_mode: 'HTML',
-  };
-  if (replyMarkup) {
-    body.reply_markup = replyMarkup;
-  }
   await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'HTML',
+    }),
   });
 }
 
@@ -79,93 +63,9 @@ function generateSessionId(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-// Save to Firestore via REST API
-async function saveToFirestore(collection: string, data: any, docId?: string): Promise<string> {
-  const projectId = FIREBASE_CONFIG.projectId;
-  const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
-  
-  // Convert data to Firestore format
-  const firestoreData = convertToFirestoreFormat(data);
-  
-  if (docId) {
-    // Update existing document
-    const url = `${baseUrl}/${collection}/${docId}?updateMask.fieldPaths=${Object.keys(data).join('&updateMask.fieldPaths=')}`;
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: firestoreData }),
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Firestore update error:', error);
-      throw new Error(`Firestore error: ${error}`);
-    }
-    return docId;
-  } else {
-    // Create new document
-    const url = `${baseUrl}/${collection}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: firestoreData }),
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Firestore create error:', error);
-      throw new Error(`Firestore error: ${error}`);
-    }
-    
-    const result = await response.json();
-    // Extract document ID from name: "projects/.../documents/collection/docId"
-    const docPath = result.name.split('/');
-    return docPath[docPath.length - 1];
-  }
-}
-
-// Find document by field value
-async function findInFirestore(collection: string, field: string, value: string): Promise<{ id: string; data: any } | null> {
-  const projectId = FIREBASE_CONFIG.projectId;
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      structuredQuery: {
-        from: [{ collectionId: collection }],
-        where: {
-          fieldFilter: {
-            field: { fieldPath: field },
-            op: 'EQUAL',
-            value: { stringValue: value }
-          }
-        },
-        limit: 1
-      }
-    }),
-  });
-  
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('Firestore query error:', error);
-    return null;
-  }
-  
-  const results = await response.json();
-  if (results && results.length > 0 && results[0].document) {
-    const doc = results[0].document;
-    const docPath = doc.name.split('/');
-    const docId = docPath[docPath.length - 1];
-    return { id: docId, data: convertFromFirestoreFormat(doc.fields) };
-  }
-  
-  return null;
-}
-
-function convertToFirestoreFormat(data: any): any {
-  const result: any = {};
+// Firestore REST API helpers
+function convertToFirestoreFormat(data: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
     if (value === null || value === undefined) {
       result[key] = { nullValue: null };
@@ -179,20 +79,14 @@ function convertToFirestoreFormat(data: any): any {
       }
     } else if (typeof value === 'boolean') {
       result[key] = { booleanValue: value };
-    } else if (value instanceof Date) {
-      result[key] = { timestampValue: value.toISOString() };
-    } else if (Array.isArray(value)) {
-      result[key] = { arrayValue: { values: value.map(v => ({ stringValue: v.toString() })) } };
-    } else if (typeof value === 'object') {
-      result[key] = { mapValue: { fields: convertToFirestoreFormat(value) } };
     }
   }
   return result;
 }
 
-function convertFromFirestoreFormat(fields: any): any {
-  const result: any = {};
-  for (const [key, value] of Object.entries(fields as Record<string, any>)) {
+function convertFromFirestoreFormat(fields: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(fields)) {
     if ('stringValue' in value) {
       result[key] = value.stringValue;
     } else if ('integerValue' in value) {
@@ -201,12 +95,6 @@ function convertFromFirestoreFormat(fields: any): any {
       result[key] = value.doubleValue;
     } else if ('booleanValue' in value) {
       result[key] = value.booleanValue;
-    } else if ('timestampValue' in value) {
-      result[key] = value.timestampValue;
-    } else if ('arrayValue' in value) {
-      result[key] = value.arrayValue.values?.map((v: any) => v.stringValue || v.integerValue) || [];
-    } else if ('mapValue' in value) {
-      result[key] = convertFromFirestoreFormat(value.mapValue.fields);
     } else if ('nullValue' in value) {
       result[key] = null;
     }
@@ -214,15 +102,150 @@ function convertFromFirestoreFormat(fields: any): any {
   return result;
 }
 
+async function createDocument(collection: string, data: Record<string, any>): Promise<string> {
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/${collection}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: convertToFirestoreFormat(data) }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Firestore create error:', error);
+    throw new Error(error);
+  }
+  
+  const result = await response.json();
+  const docPath = result.name.split('/');
+  return docPath[docPath.length - 1];
+}
+
+async function updateDocument(collection: string, docId: string, data: Record<string, any>): Promise<void> {
+  const fieldPaths = Object.keys(data).map(k => `updateMask.fieldPaths=${k}`).join('&');
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/${collection}/${docId}?${fieldPaths}`;
+  
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: convertToFirestoreFormat(data) }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Firestore update error:', error);
+    throw new Error(error);
+  }
+}
+
+async function findByField(collection: string, field: string, value: number | string): Promise<{ id: string; data: Record<string, any> } | null> {
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery`;
+  
+  const fieldValue = typeof value === 'number' 
+    ? { integerValue: value.toString() }
+    : { stringValue: value };
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: collection }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: field },
+            op: 'EQUAL',
+            value: fieldValue
+          }
+        },
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+        limit: 1
+      }
+    }),
+  });
+  
+  if (!response.ok) {
+    console.error('Firestore query error:', await response.text());
+    return null;
+  }
+  
+  const results = await response.json();
+  if (results && results.length > 0 && results[0].document) {
+    const doc = results[0].document;
+    const docPath = doc.name.split('/');
+    return { id: docPath[docPath.length - 1], data: convertFromFirestoreFormat(doc.fields) };
+  }
+  
+  return null;
+}
+
+// Find active session for user (pending or file_uploaded status)
+async function findActiveSession(telegramUserId: number): Promise<{ id: string; data: Record<string, any> } | null> {
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents:runQuery`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'temp_uploads' }],
+        where: {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              {
+                fieldFilter: {
+                  field: { fieldPath: 'telegramUserId' },
+                  op: 'EQUAL',
+                  value: { integerValue: telegramUserId.toString() }
+                }
+              },
+              {
+                fieldFilter: {
+                  field: { fieldPath: 'status' },
+                  op: 'IN',
+                  value: { 
+                    arrayValue: { 
+                      values: [
+                        { stringValue: 'pending' },
+                        { stringValue: 'file_uploaded' }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+        limit: 1
+      }
+    }),
+  });
+  
+  if (!response.ok) {
+    console.error('Firestore query error:', await response.text());
+    return null;
+  }
+  
+  const results = await response.json();
+  if (results && results.length > 0 && results[0].document) {
+    const doc = results[0].document;
+    const docPath = doc.name.split('/');
+    return { id: docPath[docPath.length - 1], data: convertFromFirestoreFormat(doc.fields) };
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const update = await req.json();
-    console.log('Received Telegram update:', JSON.stringify(update));
+    console.log('Telegram update:', JSON.stringify(update));
 
     const message: TelegramMessage = update.message;
     if (!message) {
@@ -231,104 +254,87 @@ serve(async (req) => {
 
     const chatId = message.chat.id;
     const userId = message.from.id;
-    const username = message.from.username;
+    const username = message.from.username || '';
 
-    // Handle /start command
+    // === /start command ===
     if (message.text === '/start') {
-      userSessions.delete(userId);
       await sendMessage(chatId, 
-        `🤖 <b>Product Upload Bot!</b>\n\n` +
-        `<b>Commands:</b>\n` +
-        `📤 /upload - Start product upload session\n` +
-        `❓ /help - Show this help\n\n` +
-        `<i>Use /upload to add products to your store!</i>`
+        `🤖 <b>Product Upload Bot</b>\n\n` +
+        `Commands:\n` +
+        `📤 /upload - Start upload session\n` +
+        `❓ /help - Help\n\n` +
+        `<i>Use /upload to add products!</i>`
       );
       return new Response('OK', { status: 200 });
     }
 
-    // Handle /help command
+    // === /help command ===
     if (message.text === '/help') {
       await sendMessage(chatId,
-        `📖 <b>How to Upload Products</b>\n\n` +
-        `1️⃣ Type /upload to start\n` +
-        `2️⃣ Send your product file (with optional title in caption)\n` +
-        `3️⃣ Send a thumbnail image OR type /skip\n` +
-        `4️⃣ Copy the Session ID and paste it in the webapp\n\n` +
-        `<i>Session IDs expire after 24 hours</i>`
+        `📖 <b>How to Upload</b>\n\n` +
+        `1️⃣ /upload - Start session\n` +
+        `2️⃣ Send your file\n` +
+        `3️⃣ Send thumbnail OR /skip\n` +
+        `4️⃣ Copy Session ID to webapp`
       );
       return new Response('OK', { status: 200 });
     }
 
-    // Handle /upload command - Start new session
+    // === /upload command ===
     if (message.text === '/upload') {
       const sessionId = generateSessionId();
       
-      // Save initial session to Firestore
-      await saveToFirestore('temp_uploads', {
+      await createDocument('temp_uploads', {
         sessionId: sessionId,
         telegramUserId: userId,
-        telegramUsername: username || '',
+        telegramUsername: username,
         status: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      });
-      
-      // Store in memory for quick access
-      userSessions.set(userId, { 
-        sessionId, 
-        step: 'awaiting_file' 
       });
       
       await sendMessage(chatId,
-        `📤 <b>Upload Session Started!</b>\n\n` +
-        `🔑 <b>Session ID:</b> <code>${sessionId}</code>\n\n` +
-        `Now send me your <b>product file</b>.\n` +
-        `<i>You can add a title in the caption!</i>`
+        `📤 <b>Session Started!</b>\n\n` +
+        `🔑 Session ID: <code>${sessionId}</code>\n\n` +
+        `Now send your <b>product file</b>.`
       );
       return new Response('OK', { status: 200 });
     }
 
-    // Handle /skip command - Skip thumbnail
+    // === /skip command ===
     if (message.text === '/skip') {
-      const session = userSessions.get(userId);
-      if (!session || session.step !== 'awaiting_thumbnail') {
-        await sendMessage(chatId, `❌ No active upload session. Use /upload to start.`);
+      const session = await findActiveSession(userId);
+      
+      if (!session || session.data.status !== 'file_uploaded') {
+        await sendMessage(chatId, `❌ No file uploaded yet. Use /upload first, then send a file.`);
         return new Response('OK', { status: 200 });
       }
       
-      // Find and update Firestore document
-      const doc = await findInFirestore('temp_uploads', 'sessionId', session.sessionId);
-      if (doc) {
-        await saveToFirestore('temp_uploads', {
-          status: 'complete',
-          updatedAt: new Date().toISOString(),
-        }, doc.id);
-      }
-      
-      userSessions.delete(userId);
+      await updateDocument('temp_uploads', session.id, {
+        status: 'complete',
+        updatedAt: new Date().toISOString(),
+      });
       
       await sendMessage(chatId,
         `✅ <b>Upload Complete!</b>\n\n` +
-        `🔑 <b>Session ID:</b> <code>${session.sessionId}</code>\n\n` +
-        `📋 Go to the webapp and paste this Session ID to fetch your product data!`
+        `🔑 Session ID: <code>${session.data.sessionId}</code>\n\n` +
+        `Paste this in webapp to fetch data!`
       );
       return new Response('OK', { status: 200 });
     }
 
-    // Handle document upload
+    // === File upload ===
     if (message.document) {
-      const session = userSessions.get(userId);
+      const doc = message.document;
+      let session = await findActiveSession(userId);
       
-      if (!session || session.step !== 'awaiting_file') {
-        // No active session, create one on the fly
+      if (!session || session.data.status !== 'pending') {
+        // Create new session on the fly
         const sessionId = generateSessionId();
-        const doc = message.document;
-        
-        await saveToFirestore('temp_uploads', {
+        await createDocument('temp_uploads', {
           sessionId: sessionId,
           telegramUserId: userId,
-          telegramUsername: username || '',
+          telegramUsername: username,
           fileId: doc.file_id,
           fileName: doc.file_name || 'unknown',
           fileSize: doc.file_size || 0,
@@ -338,114 +344,85 @@ serve(async (req) => {
           status: 'file_uploaded',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        });
-        
-        userSessions.set(userId, { 
-          sessionId, 
-          step: 'awaiting_thumbnail',
-          fileData: { fileName: doc.file_name, fileSize: doc.file_size }
         });
         
         await sendMessage(chatId,
           `📁 <b>File Received!</b>\n\n` +
-          `📄 <b>Name:</b> ${doc.file_name || 'unknown'}\n` +
-          `📊 <b>Size:</b> ${formatFileSize(doc.file_size || 0)}\n` +
-          `🔑 <b>Session ID:</b> <code>${sessionId}</code>\n\n` +
-          `Now send me a <b>thumbnail image</b> or type /skip`
+          `📄 ${doc.file_name || 'unknown'}\n` +
+          `📊 ${formatFileSize(doc.file_size || 0)}\n` +
+          `🔑 <code>${sessionId}</code>\n\n` +
+          `Now send <b>thumbnail</b> or /skip`
         );
         return new Response('OK', { status: 200 });
       }
       
-      // Active session exists
-      const doc = message.document;
-      
-      // Find and update Firestore
-      const firestoreDoc = await findInFirestore('temp_uploads', 'sessionId', session.sessionId);
-      if (firestoreDoc) {
-        await saveToFirestore('temp_uploads', {
-          fileId: doc.file_id,
-          fileName: doc.file_name || 'unknown',
-          fileSize: doc.file_size || 0,
-          fileSizeFormatted: formatFileSize(doc.file_size || 0),
-          mimeType: doc.mime_type || 'application/octet-stream',
-          title: doc.file_name || 'Untitled',
-          status: 'file_uploaded',
-          updatedAt: new Date().toISOString(),
-        }, firestoreDoc.id);
-      }
-      
-      session.step = 'awaiting_thumbnail';
-      session.fileData = { fileName: doc.file_name, fileSize: doc.file_size };
-      userSessions.set(userId, session);
+      // Update existing pending session
+      await updateDocument('temp_uploads', session.id, {
+        fileId: doc.file_id,
+        fileName: doc.file_name || 'unknown',
+        fileSize: doc.file_size || 0,
+        fileSizeFormatted: formatFileSize(doc.file_size || 0),
+        mimeType: doc.mime_type || 'application/octet-stream',
+        title: doc.file_name || 'Untitled',
+        status: 'file_uploaded',
+        updatedAt: new Date().toISOString(),
+      });
       
       await sendMessage(chatId,
         `📁 <b>File Received!</b>\n\n` +
-        `📄 <b>Name:</b> ${doc.file_name || 'unknown'}\n` +
-        `📊 <b>Size:</b> ${formatFileSize(doc.file_size || 0)}\n\n` +
-        `Now send me a <b>thumbnail image</b> or type /skip`
+        `📄 ${doc.file_name || 'unknown'}\n` +
+        `📊 ${formatFileSize(doc.file_size || 0)}\n` +
+        `🔑 <code>${session.data.sessionId}</code>\n\n` +
+        `Now send <b>thumbnail</b> or /skip`
       );
       return new Response('OK', { status: 200 });
     }
 
-    // Handle photo upload (thumbnail)
+    // === Photo upload (thumbnail) ===
     if (message.photo && message.photo.length > 0) {
-      const session = userSessions.get(userId);
+      const session = await findActiveSession(userId);
       
-      if (!session) {
+      if (!session || session.data.status !== 'file_uploaded') {
         await sendMessage(chatId, 
-          `ℹ️ <b>Photo Received!</b>\n\n` +
-          `🔑 <b>File ID:</b>\n<code>${message.photo[message.photo.length - 1].file_id}</code>\n\n` +
-          `<i>Use /upload to start a product upload session.</i>`
+          `❌ Send a file first!\n\nUse /upload to start.`
         );
         return new Response('OK', { status: 200 });
       }
       
-      // Get highest resolution photo
       const photo = message.photo[message.photo.length - 1];
       
-      // Find and update Firestore
-      const firestoreDoc = await findInFirestore('temp_uploads', 'sessionId', session.sessionId);
-      if (firestoreDoc) {
-        await saveToFirestore('temp_uploads', {
-          thumbnailFileId: photo.file_id,
-          status: 'complete',
-          updatedAt: new Date().toISOString(),
-        }, firestoreDoc.id);
-      }
-      
-      userSessions.delete(userId);
+      await updateDocument('temp_uploads', session.id, {
+        thumbnailFileId: photo.file_id,
+        status: 'complete',
+        updatedAt: new Date().toISOString(),
+      });
       
       await sendMessage(chatId,
         `✅ <b>Upload Complete!</b>\n\n` +
-        `🔑 <b>Session ID:</b> <code>${session.sessionId}</code>\n\n` +
-        `📋 Go to the webapp and paste this Session ID to fetch your product data!\n\n` +
-        `<i>Data saved:</i>\n` +
-        `• File: ${session.fileData?.fileName || 'Yes'}\n` +
-        `• Thumbnail: Yes`
+        `📄 File: ${session.data.fileName}\n` +
+        `🖼️ Thumbnail: Added\n` +
+        `🔑 Session: <code>${session.data.sessionId}</code>\n\n` +
+        `Paste Session ID in webapp!`
       );
       return new Response('OK', { status: 200 });
     }
 
-    // Default response for unknown input
-    if (!userSessions.has(userId)) {
-      await sendMessage(chatId,
-        `❓ Send /upload to start uploading a product.\n\n` +
-        `Type /help for instructions.`
-      );
-    } else {
-      const session = userSessions.get(userId);
-      if (session?.step === 'awaiting_file') {
-        await sendMessage(chatId, `📤 Please send your <b>product file</b>.`);
-      } else if (session?.step === 'awaiting_thumbnail') {
-        await sendMessage(chatId, `🖼️ Please send a <b>thumbnail image</b> or type /skip`);
+    // === Default response ===
+    const session = await findActiveSession(userId);
+    if (session) {
+      if (session.data.status === 'pending') {
+        await sendMessage(chatId, `📤 Send your <b>product file</b>.`);
+      } else if (session.data.status === 'file_uploaded') {
+        await sendMessage(chatId, `🖼️ Send <b>thumbnail</b> or /skip`);
       }
+    } else {
+      await sendMessage(chatId, `Use /upload to start.`);
     }
 
     return new Response('OK', { status: 200 });
 
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('Error:', error);
     return new Response('Error', { status: 500 });
   }
 });
