@@ -60,6 +60,7 @@ export interface Product {
   unlockByAds: boolean;
   adCreditsRequired: number;
   coinPrice?: number;
+  shortlinkUrl?: string; // URL shortener link for monetized downloads
   
   // Stats
   downloads: number;
