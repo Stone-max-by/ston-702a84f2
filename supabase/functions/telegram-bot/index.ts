@@ -334,7 +334,7 @@ serve(async (req) => {
           fileSize: doc.file_size || 0,
           fileSizeFormatted: formatFileSize(doc.file_size || 0),
           mimeType: doc.mime_type || 'application/octet-stream',
-          title: message.caption || doc.file_name || 'Untitled',
+          title: doc.file_name || 'Untitled',
           status: 'file_uploaded',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -369,7 +369,7 @@ serve(async (req) => {
           fileSize: doc.file_size || 0,
           fileSizeFormatted: formatFileSize(doc.file_size || 0),
           mimeType: doc.mime_type || 'application/octet-stream',
-          title: message.caption || doc.file_name || 'Untitled',
+          title: doc.file_name || 'Untitled',
           status: 'file_uploaded',
           updatedAt: new Date().toISOString(),
         }, firestoreDoc.id);
