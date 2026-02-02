@@ -29,7 +29,6 @@ import {
   generateSlug,
 } from "@/types/product";
 import { ImageUpload, MultiImageUpload } from "./ImageUpload";
-import { TelegramFileIdButton } from "./TelegramFileIdButton";
 import { TelegramFetchButton } from "./TelegramFetchButton";
 
 interface ProductFormProps {
@@ -434,16 +433,13 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
 
             {/* Files Tab */}
             <TabsContent value="files" className="space-y-4">
-              {/* Telegram Bot File ID Button */}
-              <div className="p-4 bg-background rounded-lg border border-white/10 space-y-3">
-                <Label className="text-sm font-medium">Add File via Telegram Bot</Label>
+              {/* Info about fetching from Telegram */}
+              <div className="p-4 bg-background rounded-lg border border-white/10 space-y-2">
+                <Label className="text-sm font-medium">📤 Add Files via Telegram</Label>
                 <p className="text-xs text-muted-foreground">
-                  Click the button below to get file ID from Telegram bot
+                  Use the "Fetch from Telegram" button in the header to import file data from the Telegram bot.
+                  Send /upload to the bot, upload your file, and paste the Session ID here.
                 </p>
-                <TelegramFileIdButton
-                  onFileIdReceived={handleTelegramFileId}
-                  botUsername="YourBotUsername"
-                />
               </div>
 
               {/* Files List */}
