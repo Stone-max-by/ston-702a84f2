@@ -492,6 +492,55 @@ async function handlePurchaseApiPlan(userId: string, body: any, tk: string) {
   return { success: true, newBalance: price ? (user.balance || 0) - price : user.balance };
 }
 
+async function handleUnlockProductWithAds(userId: string, tgId: number, body: any, tk: string) {
+  const { productId } = body;
+  if (!productId) return { error: 'productId required' };
+
+  const user = await fsGet(tk, `users/${userId}`);
+  if (!user) return { error: 'User not found' };
+
+  // Already owned → re-send
+  if (user.purchasedFiles?.includes(productId)) {
+    const product = await fsGet(tk, `products/${productId}`);
+    if (product?.files?.length > 0) {
+      for (const f of product.files) await sendTelegramFile(tgId, f.telegramFileId, f.name, product.title);
+    }
+    return { success: true, alreadyOwned: true };
+  }
+
+  const product = await fsGet(tk, `products/${productId}`);
+  if (!product) return { error: 'Product not found' };
+  if (!product.unlockByAds) return { error: 'This product cannot be unlocked by ads' };
+
+  const requiredCoins = (product.adCreditsRequired || 1) * 5;
+  const userCoins = user.coins || 0;
+  if (userCoins < requiredCoins) {
+    return { error: `Not enough coins. Need ${requiredCoins}, have ${userCoins}. Watch more ads!` };
+  }
+
+  // Deduct coins and add to purchasedFiles
+  await fsUpdate(tk, `users/${userId}`, {
+    coins: userCoins - requiredCoins,
+    purchasedFiles: [...(user.purchasedFiles || []), productId],
+    updatedAt: new Date().toISOString(),
+  });
+
+  await fsCreate(tk, 'transactions', {
+    userId, type: 'ad_unlock', amount: 0,
+    description: `Ad unlock: ${product.title} (${requiredCoins} coins)`,
+    date: new Date().toISOString(), status: 'completed',
+  });
+
+  let fileSent = false;
+  if (product.files?.length > 0) {
+    for (const f of product.files) {
+      if (await sendTelegramFile(tgId, f.telegramFileId, f.name, product.title)) fileSent = true;
+    }
+  }
+
+  return { success: true, fileSent, coinsSpent: requiredCoins, newCoins: userCoins - requiredCoins };
+}
+
 // ========== MAIN HANDLER ==========
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -527,6 +576,7 @@ Deno.serve(async (req) => {
       case 'claim-daily-bonus': result = await handleClaimDailyBonus(userId, body, tk); break;
       case 'claim-streak': result = await handleClaimStreak(userId, body, tk); break;
       case 'redeem-code': result = await handleRedeemCode(userId, body, tk); break;
+      case 'unlock-product-with-ads': result = await handleUnlockProductWithAds(userId, tgId, body, tk); break;
       case 'regenerate-api-key': result = await handleRegenerateApiKey(userId, tk); break;
       case 'revoke-api-key': result = await handleRevokeApiKey(userId, tk); break;
       case 'purchase-api-plan': result = await handlePurchaseApiPlan(userId, body, tk); break;

@@ -7,11 +7,13 @@ import {
   ExternalLink,
   CheckCircle,
   Loader2,
+  Coins,
 } from "lucide-react";
 import { Product } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useUserData } from "@/hooks/useUserData";
 import { toast } from "@/hooks/use-toast";
+import { showRewardedAd } from "@/lib/monetag";
 
 interface ProductActionButtonsProps {
   product: Product;
@@ -20,8 +22,9 @@ interface ProductActionButtonsProps {
 
 export function ProductActionButtons({ product, onPurchaseComplete }: ProductActionButtonsProps) {
   const { requireAuth } = useRequireAuth();
-  const { balance, hasFile, purchaseProduct } = useUserData();
+  const { balance, coins, hasFile, purchaseProduct, unlockProductWithAds } = useUserData();
   const [purchasing, setPurchasing] = useState(false);
+  const [watchingAd, setWatchingAd] = useState(false);
 
   const isOwned = hasFile(product.id);
   
@@ -56,10 +59,42 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
 
   const handleWatchAds = async () => {
     if (!requireAuth("unlock this product")) return;
-    toast({ 
-      title: "Ads Feature Coming Soon", 
-      description: "Ad unlock will be available soon!" 
-    });
+    
+    const requiredCoins = (product.adCreditsRequired || 1) * 5;
+    const userCoins = balance; // coins from useUserData
+    
+    // If user already has enough coins, unlock directly
+    if (coins >= requiredCoins) {
+      setPurchasing(true);
+      try {
+        const result = await unlockProductWithAds(product.id);
+        if (result.success) {
+          toast({ title: "Product Unlocked! 🎉", description: `${product.title} is now yours.` });
+          onPurchaseComplete?.();
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Please try again.";
+        toast({ title: "Unlock Failed", description: message, variant: "destructive" });
+      } finally {
+        setPurchasing(false);
+      }
+      return;
+    }
+
+    // Otherwise, show Monetag ad to earn coins
+    setWatchingAd(true);
+    try {
+      const adCompleted = await showRewardedAd();
+      if (adCompleted) {
+        toast({ title: "Ad Watched! 🎬", description: "Coins will be credited shortly via server." });
+      } else {
+        toast({ title: "Ad Not Completed", description: "Please watch the full ad.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Ad Error", description: "Something went wrong. Try again.", variant: "destructive" });
+    } finally {
+      setWatchingAd(false);
+    }
   };
 
   const handleShortlink = () => {
@@ -117,15 +152,18 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
   }
   
   if (hasAds) {
+    const requiredCoins = (product.adCreditsRequired || 1) * 5;
+    const hasEnoughCoins = coins >= requiredCoins;
     buttons.push(
       <Button 
         key="ads"
         onClick={handleWatchAds}
+        disabled={watchingAd || purchasing}
         variant="secondary"
         className="flex-1 h-11 text-sm font-semibold gap-2 bg-amber-600 hover:bg-amber-700 text-white"
       >
-        <Play className="w-4 h-4" />
-        {product.adCreditsRequired} Ads
+        {watchingAd ? <Loader2 className="w-4 h-4 animate-spin" /> : hasEnoughCoins ? <Coins className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+        {watchingAd ? "Watching..." : hasEnoughCoins ? "Unlock" : `${product.adCreditsRequired} Ads`}
       </Button>
     );
   }
