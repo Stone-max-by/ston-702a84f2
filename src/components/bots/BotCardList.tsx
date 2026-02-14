@@ -75,7 +75,7 @@ export function BotCardList({ bot, onClick }: BotCardListProps) {
                 ₹{bot.originalPrice}
               </span>
             )}
-            <span className="text-sm font-bold text-primary">₹{bot.price}</span>
+            <span className="text-sm font-bold text-success">₹{bot.price}</span>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
