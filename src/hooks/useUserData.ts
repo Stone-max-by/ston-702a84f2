@@ -217,6 +217,10 @@ export function useUserData() {
     return secureApiCall('redeem-code', { code });
   }, []);
 
+  const unlockProductWithAds = useCallback(async (productId: string) => {
+    return secureApiCall('unlock-product-with-ads', { productId });
+  }, []);
+
   const revokeApiKey = useCallback(async () => {
     return secureApiCall('revoke-api-key');
   }, []);
@@ -277,6 +281,7 @@ export function useUserData() {
     claimDailyBonus,
     claimStreak,
     redeemCode,
+    unlockProductWithAds,
     revokeApiKey,
     regenerateApiKey,
     purchasePlan,

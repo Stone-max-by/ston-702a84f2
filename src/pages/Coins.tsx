@@ -33,12 +33,9 @@ const STREAK_REWARDS = [
   { day: 7, coins: 100 },
 ];
 
-// Ad Networks Configuration
+// Ad Networks Configuration - Only Monetag (secured via server postback)
 const AD_NETWORKS = [
   { id: "monetag", name: "Monetag", color: "from-blue-500 to-blue-600", coins: 5 },
-  { id: "adsterra", name: "Adsterra", color: "from-green-500 to-green-600", coins: 5 },
-  { id: "propeller", name: "Propeller", color: "from-purple-500 to-purple-600", coins: 5 },
-  { id: "adcash", name: "Adcash", color: "from-orange-500 to-orange-600", coins: 5 },
 ];
 
 // Get today's date key for localStorage

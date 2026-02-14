@@ -31,6 +31,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
+import { showRewardedAd } from "@/lib/monetag";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { toast } from "@/hooks/use-toast";
 
@@ -39,9 +40,9 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { requireAuth } = useRequireAuth();
-  const { balance, hasFile, purchaseProduct } = useUserData();
+  const { balance, coins, hasFile, purchaseProduct, unlockProductWithAds } = useUserData();
   const [purchasing, setPurchasing] = useState(false);
-
+  const [watchingAd, setWatchingAd] = useState(false);
   const product = products.find((p) => p.slug === slug || p.id === slug);
   const isOwned = product ? hasFile(product.id) : false;
 
@@ -229,12 +230,49 @@ const ProductDetail = () => {
               {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
               {purchasing ? "Sending..." : "Download Free"}
             </Button>
-          ) : product.unlockByAds ? (
-            <Button onClick={handleAction} className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700" size="lg">
-              <Play className="w-5 h-5" />
-              Watch {product.adCreditsRequired} Ad{product.adCreditsRequired > 1 ? 's' : ''} to Download
-            </Button>
-          ) : (
+          ) : product.unlockByAds ? (() => {
+            const requiredCoins = (product.adCreditsRequired || 1) * 5;
+            const hasEnoughCoins = coins >= requiredCoins;
+            
+            const handleAdUnlock = async () => {
+              if (!requireAuth("unlock this product")) return;
+              if (hasEnoughCoins) {
+                setPurchasing(true);
+                try {
+                  const result = await unlockProductWithAds(product.id);
+                  if (result.success) {
+                    toast({ title: "Product Unlocked! 🎉", description: `${product.title} is now yours.` });
+                  }
+                } catch (error) {
+                  const msg = error instanceof Error ? error.message : "Please try again.";
+                  toast({ title: "Unlock Failed", description: msg, variant: "destructive" });
+                } finally {
+                  setPurchasing(false);
+                }
+              } else {
+                setWatchingAd(true);
+                try {
+                  const adCompleted = await showRewardedAd();
+                  if (adCompleted) {
+                    toast({ title: "Ad Watched! 🎬", description: "Coins credited via server shortly." });
+                  } else {
+                    toast({ title: "Ad Not Completed", description: "Watch the full ad.", variant: "destructive" });
+                  }
+                } catch {
+                  toast({ title: "Ad Error", description: "Try again.", variant: "destructive" });
+                } finally {
+                  setWatchingAd(false);
+                }
+              }
+            };
+            
+            return (
+              <Button onClick={handleAdUnlock} disabled={purchasing || watchingAd} className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700" size="lg">
+                {purchasing || watchingAd ? <Loader2 className="w-5 h-5 animate-spin" /> : hasEnoughCoins ? <CheckCircle className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                {purchasing ? "Unlocking..." : watchingAd ? "Watching Ad..." : hasEnoughCoins ? `Unlock (${requiredCoins} coins)` : `Watch Ad to Earn Coins (${coins}/${requiredCoins})`}
+              </Button>
+            );
+          })() : (
             <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2" size="lg">
               {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5" />}
               {purchasing ? "Processing..." : `Buy for ₹${product.price}`}
