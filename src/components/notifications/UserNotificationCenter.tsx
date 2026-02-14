@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, Megaphone, ExternalLink, X } from "lucide-react";
+import { Bell, Megaphone, ExternalLink, X, Wallet, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -67,8 +67,14 @@ export function UserNotificationCenter() {
                   )}
                   
                   <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Megaphone className="w-4 h-4 text-primary" />
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                      notification.type === 'admin_credit' ? 'bg-success/10' : 'bg-primary/10'
+                    }`}>
+                      {notification.type === 'admin_credit' ? (
+                        <Wallet className="w-4 h-4 text-success" />
+                      ) : (
+                        <Megaphone className="w-4 h-4 text-primary" />
+                      )}
                     </div>
                     
                     <div className="flex-1 min-w-0">

@@ -51,6 +51,15 @@ export function useAdminUsers() {
       balance: increment(amount),
       updatedAt: new Date().toISOString(),
     });
+    // Send notification to user
+    await addDoc(collection(db, "user_notifications"), {
+      userId,
+      type: "admin_credit",
+      title: "💰 Balance Added by Admin",
+      message: `₹${amount} has been added to your wallet by the admin.`,
+      read: false,
+      createdAt: new Date(),
+    });
   }, []);
 
   const updateUserCoins = useCallback(async (userId: string, amount: number) => {
@@ -58,6 +67,15 @@ export function useAdminUsers() {
     await updateDoc(userRef, {
       coins: increment(amount),
       updatedAt: new Date().toISOString(),
+    });
+    // Send notification to user
+    await addDoc(collection(db, "user_notifications"), {
+      userId,
+      type: "admin_credit",
+      title: "🪙 Coins Added by Admin",
+      message: `${amount} coins have been added to your account by the admin.`,
+      read: false,
+      createdAt: new Date(),
     });
   }, []);
 
