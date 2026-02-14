@@ -61,7 +61,7 @@ export default function AdminBots() {
       const botsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date()
+        createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt || 0)
       })) as TelegramBot[];
       
       setBots(botsData);
