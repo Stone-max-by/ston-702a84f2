@@ -116,21 +116,6 @@ export default function BotMarketplace() {
           })}
         </div>
 
-        {/* Stats Banner */}
-        <div className="flex gap-2">
-          <div className="flex-1 p-3 rounded-xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/20">
-            <p className="text-lg font-bold">{bots.length}</p>
-            <p className="text-xs text-muted-foreground">Total Bots</p>
-          </div>
-          <div className="flex-1 p-3 rounded-xl bg-gradient-to-br from-success/10 to-transparent border border-success/20">
-            <p className="text-lg font-bold text-success">Instant</p>
-            <p className="text-xs text-muted-foreground">Delivery</p>
-          </div>
-          <div className="flex-1 p-3 rounded-xl bg-gradient-to-br from-yellow-500/10 to-transparent border border-yellow-500/20">
-            <p className="text-lg font-bold text-yellow-500">24/7</p>
-            <p className="text-xs text-muted-foreground">Support</p>
-          </div>
-        </div>
 
         {/* Filter */}
         <FilterSheet
