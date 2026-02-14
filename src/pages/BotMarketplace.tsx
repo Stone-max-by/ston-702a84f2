@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Bot, Search, Sparkles } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BotCardList } from "@/components/bots/BotCardList";
 import { BotDetailModal } from "@/components/bots/BotDetailModal";
@@ -18,6 +19,7 @@ export default function BotMarketplace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<SortOption>("popular");
+  const [visibleCount, setVisibleCount] = useState(10);
   const [selectedBot, setSelectedBot] = useState<TelegramBot | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
@@ -156,15 +158,29 @@ export default function BotMarketplace() {
             <p className="text-xs text-muted-foreground/70">Try a different search</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredBots.map((bot) => (
-              <BotCardList
-                key={bot.id}
-                bot={bot}
-                onClick={() => handleBotClick(bot)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="space-y-3">
+              {filteredBots.slice(0, visibleCount).map((bot) => (
+                <BotCardList
+                  key={bot.id}
+                  bot={bot}
+                  onClick={() => handleBotClick(bot)}
+                />
+              ))}
+            </div>
+
+            {visibleCount < filteredBots.length && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setVisibleCount(prev => prev + 10)}
+                  className="w-full max-w-xs"
+                >
+                  Load More ({filteredBots.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
