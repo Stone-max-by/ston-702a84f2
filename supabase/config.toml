@@ -15,5 +15,5 @@ verify_jwt = false
 [functions.upload-to-imagekit]
 verify_jwt = false
 
-[functions.monetag-postback]
+[functions.monetag-callback]
 verify_jwt = false
