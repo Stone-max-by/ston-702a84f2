@@ -42,10 +42,10 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
     setError(null);
 
     try {
-      await purchaseBot(bot.id, bot.name, bot.price, bot.webhookUrl);
+      const result = await purchaseBot(bot.id);
 
       setStep('success');
-      toast({ title: "Purchase Successful! 🎉", description: "Admin will deliver your bot shortly" });
+      toast({ title: "Purchase Successful! 🎉", description: `${result?.botName || bot.name} — Admin will deliver shortly` });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Purchase failed. Please try again.';
       setError(errorMessage);
