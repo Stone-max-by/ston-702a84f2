@@ -3,9 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Check, IndianRupee, Sparkles, Wallet, Copy } from "lucide-react";
+import { ArrowRight, Check, IndianRupee, Sparkles, Wallet, Loader2, XCircle } from "lucide-react";
 import { useUserData } from "@/hooks/useUserData";
-import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { toast } from "sonner";
 import { secureApiCall } from "@/lib/secureApi";
@@ -36,11 +35,12 @@ const buildUpiLink = (amount: number) => {
 export default function Deposit() {
   const navigate = useNavigate();
   const { requireAuth, isAuthenticated } = useRequireAuth();
-  const [step, setStep] = useState<"amount" | "qr" | "success">("amount");
+  const [step, setStep] = useState<"amount" | "qr" | "verifying" | "success" | "failed">("amount");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [failMessage, setFailMessage] = useState("");
   const { balance } = useUserData();
-  const { addTransaction } = useUserApiCredits();
 
   useEffect(() => {
     if (!isAuthenticated) { requireAuth('add money to your wallet'); }
@@ -53,22 +53,51 @@ export default function Deposit() {
   const handleProceedToQR = () => {
     if (!requireAuth('add money to your wallet')) return;
     if (getFinalAmount() < 10) { toast.error("Minimum deposit amount is ₹10"); return; }
+    const newOrderId = generateOrderId();
+    setOrderId(newOrderId);
     setStep("qr");
   };
 
   const handlePaymentReceived = async () => {
     const amount = getFinalAmount();
-    // Note: In production, deposit should be verified server-side
-    // For now this is a placeholder - actual payment verification needed
-    await addTransaction({ type: "deposit", amount, description: "Deposit", status: "completed" });
-    setStep("success");
-    toast.success(`₹${amount} added to your balance!`);
+    setStep("verifying");
+    
+    try {
+      const result = await secureApiCall<{ success: boolean; status: string; newBalance?: number; message: string }>(
+        'verify-deposit',
+        { amount, orderId }
+      );
+
+      if (result.success) {
+        setStep("success");
+        toast.success(result.message);
+        // Balance will auto-refresh from useUserData listener
+      } else {
+        setFailMessage(result.message || "Payment verification failed");
+        setStep("failed");
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Something went wrong";
+      setFailMessage(msg);
+      setStep("failed");
+    }
   };
 
-  const handleBack = () => { if (step === "qr") setStep("amount"); else if (step === "success") navigate(-1); };
+  const handleRetry = () => {
+    setFailMessage("");
+    const newOrderId = generateOrderId();
+    setOrderId(newOrderId);
+    setStep("qr");
+  };
+
+  const handleBack = () => {
+    if (step === "qr") setStep("amount");
+    else if (step === "failed") setStep("amount");
+    else if (step === "success") navigate(-1);
+  };
 
   return (
-    <AppLayout title={step === "amount" ? "Add Money" : step === "qr" ? "Scan & Pay" : "Success"} showBack onBack={step === "amount" ? () => navigate(-1) : handleBack}>
+    <AppLayout title={step === "amount" ? "Add Money" : step === "qr" ? "Scan & Pay" : step === "verifying" ? "Verifying..." : step === "success" ? "Success" : "Failed"} showBack onBack={step === "amount" ? () => navigate(-1) : step === "verifying" ? undefined : handleBack}>
       <div className="p-4 pb-8">
         {step === "amount" && (
           <div className="space-y-6 animate-in fade-in duration-300">
@@ -123,6 +152,39 @@ export default function Deposit() {
             <div className="space-y-3 pt-4">
               <Button className="w-full h-14 text-lg font-semibold rounded-xl" onClick={() => navigate("/transactions")}>View Transactions</Button>
               <Button variant="outline" className="w-full h-12 rounded-xl border-border" onClick={() => navigate(-1)}>Go Back</Button>
+            </div>
+          </div>
+        )}
+        {step === "verifying" && (
+          <div className="space-y-8 pt-16 animate-in fade-in duration-300">
+            <div className="flex justify-center">
+              <div className="relative w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center">
+                <Loader2 className="h-14 w-14 text-primary animate-spin" />
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-2xl font-bold text-foreground">Verifying Payment...</p>
+              <p className="text-muted-foreground">Please wait while we confirm your ₹{getFinalAmount()} payment</p>
+            </div>
+          </div>
+        )}
+        {step === "failed" && (
+          <div className="space-y-8 pt-12 animate-in fade-in zoom-in-95 duration-500">
+            <div className="flex justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 bg-destructive/20 rounded-full blur-2xl animate-pulse" />
+                <div className="relative w-28 h-28 rounded-full bg-gradient-to-br from-destructive to-destructive/80 flex items-center justify-center shadow-xl shadow-destructive/30">
+                  <XCircle className="h-14 w-14 text-white" strokeWidth={2.5} />
+                </div>
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-3xl font-bold text-foreground">Payment Failed</p>
+              <p className="text-muted-foreground">{failMessage}</p>
+            </div>
+            <div className="space-y-3 pt-4">
+              <Button className="w-full h-14 text-lg font-semibold rounded-xl" onClick={handleRetry}>Try Again</Button>
+              <Button variant="outline" className="w-full h-12 rounded-xl border-border" onClick={() => { setStep("amount"); setFailMessage(""); }}>Change Amount</Button>
             </div>
           </div>
         )}
