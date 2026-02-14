@@ -24,21 +24,23 @@ export default function Explore() {
   const { products, loading } = useProducts();
   const { activeCategories: dynamicProductCategories } = useCategories("product");
 
-  // Merge hardcoded types + dynamic categories
-  const allProductTypes = [
-    ...Object.entries(productTypeLabels).map(([key, label]) => ({
+  // Merge hardcoded types + dynamic categories (deduplicate by key)
+  const allProductTypes = useMemo(() => {
+    const hardcoded = Object.entries(productTypeLabels).map(([key, label]) => ({
       key,
       label,
       icon: productTypeIcons[key as ProductType] || "📦",
-    })),
-    ...dynamicProductCategories
-      .filter(cat => !Object.keys(productTypeLabels).includes(cat.name.toLowerCase().replace(/\s+/g, "_")))
+    }));
+    const hardcodedKeys = new Set(hardcoded.map(t => t.key));
+    const dynamic = dynamicProductCategories
       .map(cat => ({
         key: cat.name.toLowerCase().replace(/\s+/g, "_"),
         label: cat.name,
         icon: cat.icon,
-      })),
-  ];
+      }))
+      .filter(cat => !hardcodedKeys.has(cat.key));
+    return [...hardcoded, ...dynamic];
+  }, [dynamicProductCategories]);
 
   // Reset visible count when category or search changes
   const handleCategoryChange = (category: string) => {
