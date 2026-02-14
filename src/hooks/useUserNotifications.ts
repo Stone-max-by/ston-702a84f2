@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export interface UserNotification {
   id: string;
-  type: 'promotion' | 'purchase' | 'system';
+  type: 'promotion' | 'purchase' | 'system' | 'admin_credit';
   title: string;
   message: string;
   imageUrl?: string;
@@ -19,6 +19,7 @@ export function useUserNotifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [promotions, setPromotions] = useState<UserNotification[]>([]);
+  const [userNotifs, setUserNotifs] = useState<UserNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -36,10 +37,7 @@ export function useUserNotifications() {
         const items: UserNotification[] = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
-          // Check if expired
-          if (data.expiresAt && data.expiresAt.toDate() < new Date()) {
-            return;
-          }
+          if (data.expiresAt && data.expiresAt.toDate() < new Date()) return;
           items.push({
             id: doc.id,
             type: 'promotion',
@@ -48,7 +46,7 @@ export function useUserNotifications() {
             imageUrl: data.imageUrl,
             linkUrl: data.linkUrl,
             linkText: data.linkText,
-            read: false, // Promotions are always shown
+            read: false,
             createdAt: data.createdAt?.toDate?.() || new Date(),
           });
         });
@@ -64,16 +62,60 @@ export function useUserNotifications() {
     return () => unsubscribe();
   }, []);
 
-  // Combine all notifications
+  // Fetch user-specific notifications (admin credits, etc.)
   useEffect(() => {
-    const allNotifications = [...promotions];
+    if (!user?.id) {
+      setUserNotifs([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, "user_notifications"),
+      where("userId", "==", user.id),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items: UserNotification[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          items.push({
+            id: docSnap.id,
+            type: data.type || 'system',
+            title: data.title || '',
+            message: data.message || '',
+            read: data.read || false,
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+          });
+        });
+        setUserNotifs(items);
+      },
+      (error) => {
+        console.error("Error fetching user notifications:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.id]);
+
+  // Combine all notifications sorted by date
+  useEffect(() => {
+    const allNotifications = [...promotions, ...userNotifs].sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    );
     setNotifications(allNotifications);
     setUnreadCount(allNotifications.filter(n => !n.read).length);
-  }, [promotions]);
+  }, [promotions, userNotifs]);
 
   const markAsRead = async (notificationId: string) => {
-    // For promotions, we don't persist read state
-    // For user-specific notifications, we would update Firestore
+    try {
+      const notifRef = doc(db, "user_notifications", notificationId);
+      await updateDoc(notifRef, { read: true });
+    } catch (e) {
+      // Promotions don't have read state persisted
+    }
   };
 
   return {
