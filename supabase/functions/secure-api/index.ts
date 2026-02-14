@@ -492,53 +492,89 @@ async function handlePurchaseApiPlan(userId: string, body: any, tk: string) {
   return { success: true, newBalance: price ? (user.balance || 0) - price : user.balance };
 }
 
-async function handleUnlockProductWithAds(userId: string, tgId: number, body: any, tk: string) {
+async function handleWatchAdForProduct(userId: string, tgId: number, body: any, tk: string) {
   const { productId } = body;
   if (!productId) return { error: 'productId required' };
 
   const user = await fsGet(tk, `users/${userId}`);
   if (!user) return { error: 'User not found' };
 
-  // Already owned → re-send
+  // Already owned → re-send file
   if (user.purchasedFiles?.includes(productId)) {
     const product = await fsGet(tk, `products/${productId}`);
     if (product?.files?.length > 0) {
       for (const f of product.files) await sendTelegramFile(tgId, f.telegramFileId, f.name, product.title);
     }
-    return { success: true, alreadyOwned: true };
+    return { success: true, alreadyOwned: true, adsWatched: 0, adsRequired: 0 };
   }
 
   const product = await fsGet(tk, `products/${productId}`);
   if (!product) return { error: 'Product not found' };
   if (!product.unlockByAds) return { error: 'This product cannot be unlocked by ads' };
 
-  const requiredCoins = (product.adCreditsRequired || 1) * 5;
-  const userCoins = user.coins || 0;
-  if (userCoins < requiredCoins) {
-    return { error: `Not enough coins. Need ${requiredCoins}, have ${userCoins}. Watch more ads!` };
+  const adsRequired = product.adCreditsRequired || 1;
+
+  // Rate limiting - 10s cooldown between ad watches
+  const ar = user.adRewards || { adsWatchedToday: 0, lastWatchDate: '', totalAdsWatched: 0, bonusClaimed: false, lastAdTimestamp: '' };
+  const today = new Date().toISOString().split('T')[0];
+  if (ar.lastWatchDate !== today) { ar.adsWatchedToday = 0; ar.bonusClaimed = false; }
+  if (ar.adsWatchedToday >= 40) return { error: 'Daily ad limit reached (40)' };
+  if (ar.lastAdTimestamp) {
+    const gap = Date.now() - new Date(ar.lastAdTimestamp).getTime();
+    if (gap < 10000) return { error: 'Too fast. Wait before watching another ad.' };
   }
 
-  // Deduct coins and add to purchasedFiles
-  await fsUpdate(tk, `users/${userId}`, {
-    coins: userCoins - requiredCoins,
-    purchasedFiles: [...(user.purchasedFiles || []), productId],
+  // Track per-product ad progress
+  const productAdProgress = user.productAdProgress || {};
+  const currentWatched = (productAdProgress[productId] || 0) + 1;
+  productAdProgress[productId] = currentWatched;
+
+  const unlocked = currentWatched >= adsRequired;
+
+  const updates: Record<string, any> = {
+    productAdProgress,
+    adRewards: {
+      adsWatchedToday: ar.adsWatchedToday + 1,
+      totalAdsWatched: (ar.totalAdsWatched || 0) + 1,
+      lastWatchDate: today,
+      bonusClaimed: ar.bonusClaimed,
+      lastAdTimestamp: new Date().toISOString(),
+    },
     updatedAt: new Date().toISOString(),
-  });
+  };
 
-  await fsCreate(tk, 'transactions', {
-    userId, type: 'ad_unlock', amount: 0,
-    description: `Ad unlock: ${product.title} (${requiredCoins} coins)`,
-    date: new Date().toISOString(), status: 'completed',
-  });
+  if (unlocked) {
+    updates.purchasedFiles = [...(user.purchasedFiles || []), productId];
+    // Clean up progress for this product
+    delete productAdProgress[productId];
+    updates.productAdProgress = productAdProgress;
+  }
 
+  await fsUpdate(tk, `users/${userId}`, updates);
+
+  // If unlocked, send file and log transaction
   let fileSent = false;
-  if (product.files?.length > 0) {
-    for (const f of product.files) {
-      if (await sendTelegramFile(tgId, f.telegramFileId, f.name, product.title)) fileSent = true;
+  if (unlocked) {
+    await fsCreate(tk, 'transactions', {
+      userId, type: 'ad_unlock', amount: 0,
+      description: `Ad unlock: ${product.title} (${adsRequired} ads)`,
+      date: new Date().toISOString(), status: 'completed',
+    });
+
+    if (product.files?.length > 0) {
+      for (const f of product.files) {
+        if (await sendTelegramFile(tgId, f.telegramFileId, f.name, product.title)) fileSent = true;
+      }
     }
   }
 
-  return { success: true, fileSent, coinsSpent: requiredCoins, newCoins: userCoins - requiredCoins };
+  return {
+    success: true,
+    unlocked,
+    fileSent,
+    adsWatched: unlocked ? adsRequired : currentWatched,
+    adsRequired,
+  };
 }
 
 // ========== MAIN HANDLER ==========
@@ -576,7 +612,7 @@ Deno.serve(async (req) => {
       case 'claim-daily-bonus': result = await handleClaimDailyBonus(userId, body, tk); break;
       case 'claim-streak': result = await handleClaimStreak(userId, body, tk); break;
       case 'redeem-code': result = await handleRedeemCode(userId, body, tk); break;
-      case 'unlock-product-with-ads': result = await handleUnlockProductWithAds(userId, tgId, body, tk); break;
+      case 'watch-ad-for-product': result = await handleWatchAdForProduct(userId, tgId, body, tk); break;
       case 'regenerate-api-key': result = await handleRegenerateApiKey(userId, tk); break;
       case 'revoke-api-key': result = await handleRevokeApiKey(userId, tk); break;
       case 'purchase-api-plan': result = await handlePurchaseApiPlan(userId, body, tk); break;

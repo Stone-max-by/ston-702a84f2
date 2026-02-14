@@ -217,8 +217,8 @@ export function useUserData() {
     return secureApiCall('redeem-code', { code });
   }, []);
 
-  const unlockProductWithAds = useCallback(async (productId: string) => {
-    return secureApiCall('unlock-product-with-ads', { productId });
+  const watchAdForProduct = useCallback(async (productId: string) => {
+    return secureApiCall('watch-ad-for-product', { productId });
   }, []);
 
   const revokeApiKey = useCallback(async () => {
@@ -272,6 +272,7 @@ export function useUserData() {
     
     adRewards: userData?.adRewards ?? DEFAULT_AD_REWARDS,
     referral: userData?.referral ?? DEFAULT_REFERRAL,
+    productAdProgress: (userData as any)?.productAdProgress ?? {},
     
     // Secure write operations (all go through backend)
     purchaseProduct,
@@ -281,7 +282,7 @@ export function useUserData() {
     claimDailyBonus,
     claimStreak,
     redeemCode,
-    unlockProductWithAds,
+    watchAdForProduct,
     revokeApiKey,
     regenerateApiKey,
     purchasePlan,

@@ -40,7 +40,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { requireAuth } = useRequireAuth();
-  const { balance, coins, hasFile, purchaseProduct, unlockProductWithAds } = useUserData();
+  const { balance, coins, hasFile, purchaseProduct, watchAdForProduct, productAdProgress } = useUserData();
   const [purchasing, setPurchasing] = useState(false);
   const [watchingAd, setWatchingAd] = useState(false);
   const product = products.find((p) => p.slug === slug || p.id === slug);
@@ -231,46 +231,48 @@ const ProductDetail = () => {
               {purchasing ? "Sending..." : "Download Free"}
             </Button>
           ) : product.unlockByAds ? (() => {
-            const requiredCoins = (product.adCreditsRequired || 1) * 5;
-            const hasEnoughCoins = coins >= requiredCoins;
+            const adsRequired = product.adCreditsRequired || 1;
+            const adsWatched = productAdProgress[product.id] || 0;
             
-            const handleAdUnlock = async () => {
+            const handleAdWatch = async () => {
               if (!requireAuth("unlock this product")) return;
-              if (hasEnoughCoins) {
-                setPurchasing(true);
-                try {
-                  const result = await unlockProductWithAds(product.id);
-                  if (result.success) {
-                    toast({ title: "Product Unlocked! 🎉", description: `${product.title} is now yours.` });
-                  }
-                } catch (error) {
-                  const msg = error instanceof Error ? error.message : "Please try again.";
-                  toast({ title: "Unlock Failed", description: msg, variant: "destructive" });
-                } finally {
-                  setPurchasing(false);
-                }
-              } else {
-                setWatchingAd(true);
-                try {
-                  const adCompleted = await showRewardedAd();
-                  if (adCompleted) {
-                    toast({ title: "Ad Watched! 🎬", description: "Coins credited via server shortly." });
-                  } else {
-                    toast({ title: "Ad Not Completed", description: "Watch the full ad.", variant: "destructive" });
-                  }
-                } catch {
-                  toast({ title: "Ad Error", description: "Try again.", variant: "destructive" });
-                } finally {
+              setWatchingAd(true);
+              try {
+                const adCompleted = await showRewardedAd();
+                if (!adCompleted) {
+                  toast({ title: "Ad Not Completed", description: "Watch the full ad.", variant: "destructive" });
                   setWatchingAd(false);
+                  return;
                 }
+                const result = await watchAdForProduct(product.id);
+                if (result.alreadyOwned) {
+                  toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
+                } else if (result.unlocked) {
+                  toast({ title: "Product Unlocked! 🎉", description: `${product.title} is now yours!` });
+                  if (result.fileSent) toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
+                } else {
+                  toast({ title: "Ad Watched! ✅", description: `${result.adsWatched}/${result.adsRequired} ads done.` });
+                }
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : "Try again.";
+                toast({ title: "Error", description: msg, variant: "destructive" });
+              } finally {
+                setWatchingAd(false);
               }
             };
             
             return (
-              <Button onClick={handleAdUnlock} disabled={purchasing || watchingAd} className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700" size="lg">
-                {purchasing || watchingAd ? <Loader2 className="w-5 h-5 animate-spin" /> : hasEnoughCoins ? <CheckCircle className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                {purchasing ? "Unlocking..." : watchingAd ? "Watching Ad..." : hasEnoughCoins ? `Unlock (${requiredCoins} coins)` : `Watch Ad to Earn Coins (${coins}/${requiredCoins})`}
-              </Button>
+              <div className="space-y-2">
+                <Button onClick={handleAdWatch} disabled={purchasing || watchingAd} className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700" size="lg">
+                  {watchingAd ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
+                  {watchingAd ? "Watching Ad..." : `Watch Ad (${adsWatched}/${adsRequired})`}
+                </Button>
+                {adsWatched > 0 && (
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div className="bg-amber-500 h-2 rounded-full transition-all" style={{ width: `${(adsWatched / adsRequired) * 100}%` }} />
+                  </div>
+                )}
+              </div>
             );
           })() : (
             <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2" size="lg">

@@ -7,13 +7,13 @@ import {
   ExternalLink,
   CheckCircle,
   Loader2,
-  Coins,
 } from "lucide-react";
 import { Product } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useUserData } from "@/hooks/useUserData";
 import { toast } from "@/hooks/use-toast";
 import { showRewardedAd } from "@/lib/monetag";
+import { Progress } from "@/components/ui/progress";
 
 interface ProductActionButtonsProps {
   product: Product;
@@ -22,7 +22,7 @@ interface ProductActionButtonsProps {
 
 export function ProductActionButtons({ product, onPurchaseComplete }: ProductActionButtonsProps) {
   const { requireAuth } = useRequireAuth();
-  const { balance, coins, hasFile, purchaseProduct, unlockProductWithAds } = useUserData();
+  const { balance, hasFile, purchaseProduct, watchAdForProduct, productAdProgress } = useUserData();
   const [purchasing, setPurchasing] = useState(false);
   const [watchingAd, setWatchingAd] = useState(false);
 
@@ -57,41 +57,36 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
     }
   };
 
-  const handleWatchAds = async () => {
+  const handleWatchAdForProduct = async () => {
     if (!requireAuth("unlock this product")) return;
     
-    const requiredCoins = (product.adCreditsRequired || 1) * 5;
-    const userCoins = balance; // coins from useUserData
-    
-    // If user already has enough coins, unlock directly
-    if (coins >= requiredCoins) {
-      setPurchasing(true);
-      try {
-        const result = await unlockProductWithAds(product.id);
-        if (result.success) {
-          toast({ title: "Product Unlocked! 🎉", description: `${product.title} is now yours.` });
-          onPurchaseComplete?.();
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Please try again.";
-        toast({ title: "Unlock Failed", description: message, variant: "destructive" });
-      } finally {
-        setPurchasing(false);
-      }
-      return;
-    }
-
-    // Otherwise, show Monetag ad to earn coins
     setWatchingAd(true);
     try {
+      // First show the Monetag ad
       const adCompleted = await showRewardedAd();
-      if (adCompleted) {
-        toast({ title: "Ad Watched! 🎬", description: "Coins will be credited shortly via server." });
-      } else {
+      if (!adCompleted) {
         toast({ title: "Ad Not Completed", description: "Please watch the full ad.", variant: "destructive" });
+        setWatchingAd(false);
+        return;
       }
-    } catch {
-      toast({ title: "Ad Error", description: "Something went wrong. Try again.", variant: "destructive" });
+
+      // Ad watched → record on backend
+      const result = await watchAdForProduct(product.id);
+      
+      if (result.alreadyOwned) {
+        toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
+      } else if (result.unlocked) {
+        toast({ title: "Product Unlocked! 🎉", description: `${product.title} is now yours!` });
+        if (result.fileSent) {
+          toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
+        }
+        onPurchaseComplete?.();
+      } else {
+        toast({ title: "Ad Watched! ✅", description: `${result.adsWatched}/${result.adsRequired} ads done.` });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Try again.";
+      toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setWatchingAd(false);
     }
@@ -152,19 +147,25 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
   }
   
   if (hasAds) {
-    const requiredCoins = (product.adCreditsRequired || 1) * 5;
-    const hasEnoughCoins = coins >= requiredCoins;
+    const adsRequired = product.adCreditsRequired || 1;
+    const adsWatched = productAdProgress[product.id] || 0;
+    const progressPercent = Math.min((adsWatched / adsRequired) * 100, 100);
+
     buttons.push(
-      <Button 
-        key="ads"
-        onClick={handleWatchAds}
-        disabled={watchingAd || purchasing}
-        variant="secondary"
-        className="flex-1 h-11 text-sm font-semibold gap-2 bg-amber-600 hover:bg-amber-700 text-white"
-      >
-        {watchingAd ? <Loader2 className="w-4 h-4 animate-spin" /> : hasEnoughCoins ? <Coins className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-        {watchingAd ? "Watching..." : hasEnoughCoins ? "Unlock" : `${product.adCreditsRequired} Ads`}
-      </Button>
+      <div key="ads" className="flex-1 space-y-1.5">
+        <Button 
+          onClick={handleWatchAdForProduct}
+          disabled={watchingAd || purchasing}
+          variant="secondary"
+          className="w-full h-11 text-sm font-semibold gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+        >
+          {watchingAd ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          {watchingAd ? "Watching..." : `Watch Ad (${adsWatched}/${adsRequired})`}
+        </Button>
+        {adsWatched > 0 && (
+          <Progress value={progressPercent} className="h-1.5" />
+        )}
+      </div>
     );
   }
   
@@ -185,7 +186,7 @@ export function ProductActionButtons({ product, onPurchaseComplete }: ProductAct
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground text-center mb-1">Choose download option</p>
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-end">
         {buttons}
       </div>
     </div>
