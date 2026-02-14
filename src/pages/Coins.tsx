@@ -168,7 +168,7 @@ export default function CoinsPage() {
     setWatchingAd(networkId);
     
     try {
-      // Show real Monetag ad
+      // Show real Monetag ad — coins are credited via server-to-server postback
       const adCompleted = await showRewardedAd();
       if (!adCompleted) {
         toast.error("Ad not completed. Try again.");
@@ -176,14 +176,11 @@ export default function CoinsPage() {
         return;
       }
       
-      // Record on backend (verified by server)
-      const success = await recordAdWatch(networkCoins);
-      if (success) {
-        const newData = { ...networkAdsWatched, [networkId]: networkWatched + 1 };
-        saveAdsWatched(newData);
-        toast.success(`+${networkCoins} coins!`);
-        setNetworkCooldowns(prev => ({ ...prev, [networkId]: COOLDOWN_SECONDS }));
-      }
+      // Ad completed — coins will be added via Monetag postback automatically
+      const newData = { ...networkAdsWatched, [networkId]: networkWatched + 1 };
+      saveAdsWatched(newData);
+      toast.success(`Ad watched! Coins will be credited shortly.`);
+      setNetworkCooldowns(prev => ({ ...prev, [networkId]: COOLDOWN_SECONDS }));
     } catch (err) {
       console.error('Ad watch error:', err);
       toast.error("Something went wrong. Try again.");

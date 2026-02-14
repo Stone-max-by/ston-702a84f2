@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.upload-to-imagekit]
 verify_jwt = false
+
+[functions.monetag-postback]
+verify_jwt = false
