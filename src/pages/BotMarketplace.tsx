@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bot, Search, Sparkles, TrendingUp, Clock } from "lucide-react";
+import { Bot, Search, Sparkles } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,19 +7,14 @@ import { BotCardList } from "@/components/bots/BotCardList";
 import { BotDetailModal } from "@/components/bots/BotDetailModal";
 import { BotPurchaseModal } from "@/components/bots/BotPurchaseModal";
 import { useBots } from "@/hooks/useBots";
+import { useCategories } from "@/hooks/useCategories";
 import { TelegramBot } from "@/types/bot";
 import { FilterSheet, SortOption } from "@/components/shared/FilterSheet";
 import { cn } from "@/lib/utils";
 
-const categories = [
-  { id: 'all', label: 'All', icon: Sparkles },
-  { id: 'automation', label: 'Automation', icon: Bot },
-  { id: 'utility', label: 'Utility', icon: TrendingUp },
-  { id: 'entertainment', label: 'Entertainment', icon: Clock },
-];
-
 export default function BotMarketplace() {
   const { bots, loading, error } = useBots();
+  const { activeCategories: botCategories } = useCategories("bot");
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<SortOption>("popular");
@@ -95,13 +90,24 @@ export default function BotMarketplace() {
 
         {/* Categories */}
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
-          {categories.map((category) => {
-            const Icon = category.icon;
-            const isActive = selectedCategory === category.id;
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+              selectedCategory === 'all'
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted/50 text-muted-foreground hover:bg-muted"
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            All
+          </button>
+          {botCategories.map((category) => {
+            const isActive = selectedCategory === category.name.toLowerCase();
             return (
               <button
                 key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
+                onClick={() => setSelectedCategory(category.name.toLowerCase())}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
                   isActive
@@ -109,8 +115,8 @@ export default function BotMarketplace() {
                     : "bg-muted/50 text-muted-foreground hover:bg-muted"
                 )}
               >
-                <Icon className="w-3.5 h-3.5" />
-                {category.label}
+                <span>{category.icon}</span>
+                {category.name}
               </button>
             );
           })}

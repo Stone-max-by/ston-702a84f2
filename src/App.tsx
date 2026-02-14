@@ -27,6 +27,7 @@ import AdminApiKeys from "./pages/admin/AdminApiKeys";
 import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
 import AdminBotPurchases from "./pages/admin/AdminBotPurchases";
 import AdminPromotions from "./pages/admin/AdminPromotions";
+import AdminCategories from "./pages/admin/AdminCategories";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/admin/bots" element={<AdminLayout><AdminBots /></AdminLayout>} />
               <Route path="/admin/bot-purchases" element={<AdminLayout><AdminBotPurchases /></AdminLayout>} />
               <Route path="/admin/promotions" element={<AdminLayout><AdminPromotions /></AdminLayout>} />
+              <Route path="/admin/categories" element={<AdminLayout><AdminCategories /></AdminLayout>} />
               <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
               <Route path="/admin/api" element={<AdminLayout><AdminApiEndpoints /></AdminLayout>} />
               <Route path="/admin/api-keys" element={<AdminLayout><AdminApiKeys /></AdminLayout>} />

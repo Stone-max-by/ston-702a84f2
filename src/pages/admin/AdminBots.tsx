@@ -3,6 +3,7 @@ import { Bot, Plus, Pencil, Trash2, Loader2, Search, ExternalLink } from "lucide
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { TelegramBot } from "@/types/bot";
+import { useCategories } from "@/hooks/useCategories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const categories = ["Automation", "Utility", "Entertainment", "Finance", "Social"];
+// categories fetched dynamically
 
 interface BotFormData {
   name: string;
@@ -51,6 +52,7 @@ export default function AdminBots() {
   const [editingBot, setEditingBot] = useState<TelegramBot | null>(null);
   const [formData, setFormData] = useState<BotFormData>(emptyFormData);
   const { toast } = useToast();
+  const { categoryNames } = useCategories("bot");
 
   const fetchBots = async () => {
     try {
@@ -223,9 +225,10 @@ export default function AdminBots() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map(cat => (
+                      {categoryNames.map(cat => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
+                      <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

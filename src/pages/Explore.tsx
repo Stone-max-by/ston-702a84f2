@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useProducts } from "@/hooks/useProducts";
 import { Product, ProductType, productTypeLabels, productTypeIcons } from "@/types/product";
+import { useCategories } from "@/hooks/useCategories";
 import { Loader2, Search } from "lucide-react";
 import { GameCardGrid } from "@/components/games/GameCardGrid";
 import { Input } from "@/components/ui/input";
@@ -12,26 +13,19 @@ import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
 
-const PRODUCT_TYPES: ProductType[] = [
-  "game",
-  "code",
-  "pixellab_plp",
-  "capcut_template",
-  "font",
-  "preset",
-  "other",
-];
+// Static types kept as fallback, dynamic categories added below
 
 export default function Explore() {
-  const [selectedCategory, setSelectedCategory] = useState<ProductType | "all">("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products, loading } = useProducts();
+  const { activeCategories: productCategories } = useCategories("product");
 
   // Reset visible count when category or search changes
-  const handleCategoryChange = (category: ProductType | "all") => {
+  const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     setVisibleCount(ITEMS_PER_PAGE);
   };
@@ -46,33 +40,22 @@ export default function Explore() {
     return products.filter(p => p.visible !== false);
   }, [products]);
 
-  // Count products by category
+  // Count products by category (using dynamic categories)
   const categoryCounts = useMemo(() => {
-    const counts: Record<ProductType | "all", number> = {
-      all: visibleProducts.length,
-      game: 0,
-      code: 0,
-      pixellab_plp: 0,
-      capcut_template: 0,
-      font: 0,
-      preset: 0,
-      other: 0,
-    };
-
+    const counts: Record<string, number> = { all: visibleProducts.length };
+    productCategories.forEach(cat => { counts[cat.name.toLowerCase()] = 0; });
     visibleProducts.forEach((product) => {
-      if (counts[product.type] !== undefined) {
-        counts[product.type]++;
-      }
+      const key = (product.type || product.category || "").toLowerCase();
+      if (counts[key] !== undefined) counts[key]++;
     });
-
     return counts;
-  }, [visibleProducts]);
+  }, [visibleProducts, productCategories]);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
     let filtered = selectedCategory === "all" 
       ? visibleProducts 
-      : visibleProducts.filter(p => p.type === selectedCategory);
+      : visibleProducts.filter(p => p.type.toLowerCase() === selectedCategory || p.category?.toLowerCase() === selectedCategory);
     
     if (search.trim()) {
       filtered = filtered.filter((product) =>
@@ -104,8 +87,8 @@ export default function Explore() {
     return sorted;
   }, [selectedCategory, visibleProducts, search, sortBy]);
 
-  // Categories with at least one product
-  const availableCategories = PRODUCT_TYPES.filter(type => categoryCounts[type] > 0);
+  // Use dynamic categories
+  const availableCategories = productCategories.filter(cat => (categoryCounts[cat.name.toLowerCase()] || 0) > 0);
 
   if (loading) {
     return (
@@ -147,20 +130,20 @@ export default function Explore() {
             <span className="opacity-70">({categoryCounts.all})</span>
           </button>
           
-          {availableCategories.map((type) => (
+          {availableCategories.map((cat) => (
             <button
-              key={type}
-              onClick={() => handleCategoryChange(type)}
+              key={cat.id}
+              onClick={() => handleCategoryChange(cat.name.toLowerCase())}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                selectedCategory === type
+                selectedCategory === cat.name.toLowerCase()
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted/50 text-muted-foreground hover:bg-muted"
               )}
             >
-              <span>{productTypeIcons[type]}</span>
-              <span>{productTypeLabels[type]}</span>
-              <span className="opacity-70">({categoryCounts[type]})</span>
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
+              <span className="opacity-70">({categoryCounts[cat.name.toLowerCase()] || 0})</span>
             </button>
           ))}
         </div>
