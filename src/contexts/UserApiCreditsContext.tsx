@@ -6,25 +6,16 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { usePurchases } from "@/hooks/usePurchases";
 
 interface UserApiCreditsContextType {
-  // Balance & Coins
   balance: number;
   coins: number;
-  addBalance: (amount: number) => Promise<void>;
-  addCoins: (amount: number) => Promise<void>;
-  
-  // Purchases
   purchases: UserApiPurchase[];
   totalRequests: number;
   usedRequests: number;
   remainingRequests: number;
   purchasePlan: (plan: ApiPricingPlan) => Promise<boolean>;
   useRequest: () => Promise<boolean>;
-  
-  // Transactions
   transactions: Transaction[];
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<string | null>;
-  
-  // Ad Rewards
   adsWatchedToday: number;
   totalAdsWatched: number;
   bonusClaimed: boolean;
@@ -32,10 +23,8 @@ interface UserApiCreditsContextType {
   coinsPerAd: number;
   dailyBonusAmount: number;
   canClaimBonus: boolean;
-  recordAdWatch: () => Promise<boolean>;
-  claimDailyBonus: () => Promise<boolean>;
-  
-  // Loading state
+  recordAdWatch: (coinsToAdd?: number) => Promise<boolean>;
+  claimDailyBonus: (bonusAmount?: number) => Promise<boolean>;
   loading: boolean;
 }
 
@@ -46,110 +35,45 @@ export function UserApiCreditsProvider({ children }: { children: ReactNode }) {
     loading: userLoading,
     balance,
     coins,
-    addBalance,
-    addCoins,
     adRewards,
     recordAdWatch,
     claimDailyBonus,
     maxAdsPerDay,
     coinsPerAd,
     dailyBonusAmount,
-    purchasePlan: updateActivePlan,
+    purchasePlan: securePurchasePlan,
   } = useUserData();
 
-  const {
-    transactions,
-    loading: transactionsLoading,
-    addTransaction,
-  } = useTransactions();
-
-  const {
-    purchases,
-    loading: purchasesLoading,
-    totalRequests,
-    usedRequests,
-    remainingRequests,
-    createPurchase,
-    useRequest,
-  } = usePurchases();
+  const { transactions, loading: transactionsLoading, addTransaction } = useTransactions();
+  const { purchases, loading: purchasesLoading, totalRequests, usedRequests, remainingRequests, createPurchase, useRequest } = usePurchases();
 
   const loading = userLoading || transactionsLoading || purchasesLoading;
   const canClaimBonus = adRewards.adsWatchedToday >= maxAdsPerDay && !adRewards.bonusClaimed;
 
   const purchasePlan = async (plan: ApiPricingPlan): Promise<boolean> => {
     if (balance < plan.price) return false;
-
-    // Deduct balance
-    await addBalance(-plan.price);
-
-    // Add transaction
-    await addTransaction({
-      type: "purchase",
-      amount: -plan.price,
-      description: `${plan.name} Plan - ${plan.requests} requests`,
-      status: "completed",
-    });
-
-    // Create purchase record
-    const purchaseId = await createPurchase(plan);
-    
-    // Update user's active plan (this is what API Docs page reads)
-    if (purchaseId) {
-      await updateActivePlan({
+    try {
+      await securePurchasePlan({
         id: plan.id,
         name: plan.name,
         credits: plan.requests,
         validityDays: parseInt(plan.validity.split(" ")[0]) || 30,
+        price: plan.price,
       });
+      return true;
+    } catch {
+      return false;
     }
-    
-    return !!purchaseId;
-  };
-
-  const handleAddBalance = async (amount: number) => {
-    await addBalance(amount);
-    await addTransaction({
-      type: "deposit",
-      amount: amount,
-      description: "Deposit",
-      status: "completed",
-    });
   };
 
   return (
     <UserApiCreditsContext.Provider
       value={{
-        // Balance & Coins
-        balance,
-        coins,
-        addBalance: handleAddBalance,
-        addCoins,
-        
-        // Purchases
-        purchases,
-        totalRequests,
-        usedRequests,
-        remainingRequests,
-        purchasePlan,
-        useRequest,
-        
-        // Transactions
-        transactions,
-        addTransaction,
-        
-        // Ad Rewards
-        adsWatchedToday: adRewards.adsWatchedToday,
-        totalAdsWatched: adRewards.totalAdsWatched,
-        bonusClaimed: adRewards.bonusClaimed,
-        maxAdsPerDay,
-        coinsPerAd,
-        dailyBonusAmount,
-        canClaimBonus,
-        recordAdWatch,
-        claimDailyBonus,
-        
-        // Loading
-        loading,
+        balance, coins, purchases, totalRequests, usedRequests, remainingRequests,
+        purchasePlan, useRequest, transactions, addTransaction,
+        adsWatchedToday: adRewards.adsWatchedToday, totalAdsWatched: adRewards.totalAdsWatched,
+        bonusClaimed: adRewards.bonusClaimed, maxAdsPerDay, coinsPerAd, dailyBonusAmount,
+        canClaimBonus, recordAdWatch, claimDailyBonus, loading,
       }}
     >
       {children}
@@ -159,8 +83,6 @@ export function UserApiCreditsProvider({ children }: { children: ReactNode }) {
 
 export function useUserApiCredits() {
   const context = useContext(UserApiCreditsContext);
-  if (!context) {
-    throw new Error("useUserApiCredits must be used within UserApiCreditsProvider");
-  }
+  if (!context) throw new Error("useUserApiCredits must be used within UserApiCreditsProvider");
   return context;
 }

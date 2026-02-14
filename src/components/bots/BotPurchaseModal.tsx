@@ -6,9 +6,6 @@ import { TelegramBot } from "@/types/bot";
 import { useUserData } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useTransactions } from "@/hooks/useTransactions";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 interface BotPurchaseModalProps {
   bot: TelegramBot | null;
@@ -22,8 +19,7 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
   const [step, setStep] = useState<PurchaseStep>('confirm');
   const [error, setError] = useState<string | null>(null);
   
-  const { balance, addBalance } = useUserData();
-  const { addTransaction } = useTransactions();
+  const { balance, purchaseBot } = useUserData();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -33,20 +29,12 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
 
   const handlePurchase = async () => {
     if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please login to purchase bots",
-        variant: "destructive"
-      });
+      toast({ title: "Login Required", description: "Please login to purchase bots", variant: "destructive" });
       return;
     }
 
     if (!canAfford) {
-      toast({
-        title: "Insufficient Balance",
-        description: "Please add money to your wallet",
-        variant: "destructive"
-      });
+      toast({ title: "Insufficient Balance", description: "Please add money to your wallet", variant: "destructive" });
       return;
     }
 
@@ -54,83 +42,11 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
     setError(null);
 
     try {
-      // Deduct balance from user account
-      await addBalance(-bot.price);
-
-      // Add transaction for the purchase
-      await addTransaction({
-        type: "purchase",
-        amount: -bot.price,
-        description: `Bot: ${bot.name}`,
-        status: "completed",
-      });
-
-      // Save bot purchase record
-      try {
-        await addDoc(collection(db, 'bot_purchases'), {
-          botId: bot.id,
-          botName: bot.name,
-          userId: user.id,
-          userName: user.displayName,
-          telegramId: user.telegramId,
-          amount: bot.price,
-          status: 'pending',
-          createdAt: serverTimestamp()
-        });
-      } catch (purchaseError) {
-        console.log('Purchase record save skipped:', purchaseError);
-      }
-
-      // Create admin notification
-      try {
-        await addDoc(collection(db, 'admin_notifications'), {
-          type: 'bot_purchase',
-          title: bot.name,
-          message: `${user.displayName} purchased for ₹${bot.price}`,
-          userId: user.id,
-          userName: user.displayName,
-          amount: bot.price,
-          read: false,
-          createdAt: serverTimestamp()
-        });
-      } catch (notifError) {
-        console.log('Notification save skipped:', notifError);
-      }
-
-      // Try webhook delivery if available
-      let webhookSuccess = false;
-      if (bot.webhookUrl) {
-        try {
-          await fetch(bot.webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            mode: 'no-cors',
-            body: JSON.stringify({
-              botId: bot.id,
-              botName: bot.name,
-              userId: user.id,
-              userName: user.displayName,
-              telegramId: user.telegramId,
-              amount: bot.price,
-              timestamp: new Date().toISOString()
-            })
-          });
-          webhookSuccess = true;
-        } catch (webhookError) {
-          console.error('Webhook failed:', webhookError);
-        }
-      }
+      await purchaseBot(bot.id, bot.name, bot.price, bot.webhookUrl);
 
       setStep('success');
-      toast({
-        title: "Purchase Successful! 🎉",
-        description: webhookSuccess 
-          ? "Bot is being delivered to your account" 
-          : "Admin will deliver your bot shortly"
-      });
-
+      toast({ title: "Purchase Successful! 🎉", description: "Admin will deliver your bot shortly" });
     } catch (err) {
-      console.error('Purchase failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'Purchase failed. Please try again.';
       setError(errorMessage);
       setStep('failed');
@@ -158,58 +74,25 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
 
         {step === 'confirm' && (
           <div className="space-y-4">
-            {/* Bot Preview - only show image if available */}
             <div className={`flex gap-3 p-3 rounded-xl bg-muted/30 ${!bot.image ? 'items-center' : ''}`}>
-              {bot.image && (
-                <img 
-                  src={bot.image} 
-                  alt={bot.name}
-                  className="w-16 h-16 rounded-lg object-cover shrink-0"
-                />
-              )}
+              {bot.image && <img src={bot.image} alt={bot.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />}
               <div className="flex-1 min-w-0">
                 <h4 className="font-semibold text-sm">{bot.name}</h4>
                 <p className="text-xs text-muted-foreground line-clamp-2">{bot.shortDescription}</p>
-                {!bot.image && (
-                  <p className="text-xs text-primary mt-1">₹{bot.price}</p>
-                )}
+                {!bot.image && <p className="text-xs text-primary mt-1">₹{bot.price}</p>}
               </div>
             </div>
 
-            {/* Features */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="flex flex-col items-center p-2 rounded-lg bg-primary/5">
-                <Zap className="w-4 h-4 text-primary mb-1" />
-                <span className="text-xs text-muted-foreground">Instant</span>
-              </div>
-              <div className="flex flex-col items-center p-2 rounded-lg bg-success/5">
-                <Shield className="w-4 h-4 text-success mb-1" />
-                <span className="text-xs text-muted-foreground">Secure</span>
-              </div>
-              <div className="flex flex-col items-center p-2 rounded-lg bg-yellow-500/5">
-                <Clock className="w-4 h-4 text-yellow-500 mb-1" />
-                <span className="text-xs text-muted-foreground">24/7</span>
-              </div>
+              <div className="flex flex-col items-center p-2 rounded-lg bg-primary/5"><Zap className="w-4 h-4 text-primary mb-1" /><span className="text-xs text-muted-foreground">Instant</span></div>
+              <div className="flex flex-col items-center p-2 rounded-lg bg-success/5"><Shield className="w-4 h-4 text-success mb-1" /><span className="text-xs text-muted-foreground">Secure</span></div>
+              <div className="flex flex-col items-center p-2 rounded-lg bg-yellow-500/5"><Clock className="w-4 h-4 text-yellow-500 mb-1" /><span className="text-xs text-muted-foreground">24/7</span></div>
             </div>
 
-            {/* Price Summary */}
             <div className="space-y-2 p-3 rounded-xl bg-muted/30">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Bot Price</span>
-                <span>₹{bot.price}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Your Balance</span>
-                <span className={canAfford ? "text-success" : "text-destructive"}>
-                  ₹{balance}
-                </span>
-              </div>
-              <div className="border-t border-border/50 pt-2 flex justify-between font-semibold">
-                <span>After Purchase</span>
-                <span className={canAfford ? "text-success" : "text-destructive"}>
-                  ₹{balance - bot.price}
-                </span>
-              </div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Bot Price</span><span>₹{bot.price}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Your Balance</span><span className={canAfford ? "text-success" : "text-destructive"}>₹{balance}</span></div>
+              <div className="border-t border-border/50 pt-2 flex justify-between font-semibold"><span>After Purchase</span><span className={canAfford ? "text-success" : "text-destructive"}>₹{balance - bot.price}</span></div>
             </div>
 
             {!canAfford && (
@@ -219,14 +102,7 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
               </div>
             )}
 
-            <Button 
-              onClick={handlePurchase} 
-              disabled={!canAfford}
-              className="w-full"
-              size="lg"
-            >
-              Pay ₹{bot.price}
-            </Button>
+            <Button onClick={handlePurchase} disabled={!canAfford} className="w-full" size="lg">Pay ₹{bot.price}</Button>
           </div>
         )}
 
@@ -239,37 +115,25 @@ export function BotPurchaseModal({ bot, open, onOpenChange }: BotPurchaseModalPr
 
         {step === 'success' && (
           <div className="py-6 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8 text-success" />
-            </div>
+            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center"><CheckCircle2 className="w-8 h-8 text-success" /></div>
             <div className="text-center">
               <h4 className="font-semibold mb-1">Purchase Successful!</h4>
-              <p className="text-sm text-muted-foreground">
-                Your bot will be delivered shortly. Check your Telegram!
-              </p>
+              <p className="text-sm text-muted-foreground">Your bot will be delivered shortly. Check your Telegram!</p>
             </div>
-            <Button onClick={handleClose} className="w-full">
-              Done
-            </Button>
+            <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
         )}
 
         {step === 'failed' && (
           <div className="py-6 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertCircle className="w-8 h-8 text-destructive" />
-            </div>
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center"><AlertCircle className="w-8 h-8 text-destructive" /></div>
             <div className="text-center">
               <h4 className="font-semibold mb-1">Purchase Failed</h4>
               <p className="text-sm text-muted-foreground">{error}</p>
             </div>
             <div className="flex gap-2 w-full">
-              <Button variant="outline" onClick={handleClose} className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={() => setStep('confirm')} className="flex-1">
-                Try Again
-              </Button>
+              <Button variant="outline" onClick={handleClose} className="flex-1">Cancel</Button>
+              <Button onClick={() => setStep('confirm')} className="flex-1">Try Again</Button>
             </div>
           </div>
         )}

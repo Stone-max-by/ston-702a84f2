@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.verify-channel]
 verify_jwt = false
+
+[functions.send-file]
+verify_jwt = false
+
+[functions.secure-api]
+verify_jwt = false
+
+[functions.upload-to-imagekit]
+verify_jwt = false
