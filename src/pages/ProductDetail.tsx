@@ -1,7 +1,5 @@
-import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
-import { useUserData } from "@/hooks/useUserData";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,50 +23,16 @@ import {
   Star,
   Share2,
   Clock,
-  Play,
-  Wallet,
-  CheckCircle,
-  Loader2,
 } from "lucide-react";
 import { productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
-import { showRewardedAd } from "@/lib/monetag";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { toast } from "@/hooks/use-toast";
+import { ProductActionButtons } from "@/components/explore/ProductActionButtons";
 
 const ProductDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { products, loading } = useProducts();
-  const { requireAuth } = useRequireAuth();
-  const { balance, coins, hasFile, purchaseProduct, watchAdForProduct, productAdProgress } = useUserData();
-  const [purchasing, setPurchasing] = useState(false);
-  const [watchingAd, setWatchingAd] = useState(false);
   const product = products.find((p) => p.slug === slug || p.id === slug);
-  const isOwned = product ? hasFile(product.id) : false;
-
-  const handleAction = async () => {
-    if (!requireAuth("access this product")) return;
-    if (!product) return;
-    
-    setPurchasing(true);
-    try {
-      const result = await purchaseProduct(product.id);
-      
-      if (result.alreadyOwned) {
-        toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
-      } else if (result.success) {
-        toast({ title: "Purchase Successful!", description: `${product.title} is now yours.` });
-        if (result.fileSent) {
-          toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
-        }
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
-      toast({ title: "Failed", description: message, variant: "destructive" });
-    } finally {
-      setPurchasing(false);
-    }
-  };
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -220,66 +184,7 @@ const ProductDetail = () => {
 
         {/* Fixed Action Button */}
         <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-          {isOwned ? (
-            <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700" size="lg">
-              {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-              {purchasing ? "Sending..." : "Download (Owned)"}
-            </Button>
-          ) : product.isFree && !product.unlockByAds ? (
-            <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700" size="lg">
-              {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              {purchasing ? "Sending..." : "Download Free"}
-            </Button>
-          ) : product.unlockByAds ? (() => {
-            const adsRequired = product.adCreditsRequired || 1;
-            const adsWatched = productAdProgress[product.id] || 0;
-            
-            const handleAdWatch = async () => {
-              if (!requireAuth("unlock this product")) return;
-              setWatchingAd(true);
-              try {
-                const adCompleted = await showRewardedAd();
-                if (!adCompleted) {
-                  toast({ title: "Ad Not Completed", description: "Watch the full ad.", variant: "destructive" });
-                  setWatchingAd(false);
-                  return;
-                }
-                const result = await watchAdForProduct(product.id);
-                if (result.alreadyOwned) {
-                  toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
-                } else if (result.unlocked) {
-                  toast({ title: "Product Unlocked! 🎉", description: `${product.title} is now yours!` });
-                  if (result.fileSent) toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
-                } else {
-                  toast({ title: "Ad Watched! ✅", description: `${result.adsWatched}/${result.adsRequired} ads done.` });
-                }
-              } catch (error) {
-                const msg = error instanceof Error ? error.message : "Try again.";
-                toast({ title: "Error", description: msg, variant: "destructive" });
-              } finally {
-                setWatchingAd(false);
-              }
-            };
-            
-            return (
-              <div className="space-y-2">
-                <Button onClick={handleAdWatch} disabled={purchasing || watchingAd} className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700" size="lg">
-                  {watchingAd ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
-                  {watchingAd ? "Watching Ad..." : `Watch Ad (${adsWatched}/${adsRequired})`}
-                </Button>
-                {adsWatched > 0 && (
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-amber-500 h-2 rounded-full transition-all" style={{ width: `${(adsWatched / adsRequired) * 100}%` }} />
-                  </div>
-                )}
-              </div>
-            );
-          })() : (
-            <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2" size="lg">
-              {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5" />}
-              {purchasing ? "Processing..." : `Buy for ₹${product.price}`}
-            </Button>
-          )}
+          <ProductActionButtons product={product} />
         </div>
       </div>
     </AppLayout>
