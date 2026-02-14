@@ -13,6 +13,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useUserData } from "@/hooks/useUserData";
+import { showRewardedAd } from "@/lib/monetag";
 
 
 // Exchange rate: 10 coins = ₹1
@@ -166,7 +167,16 @@ export default function CoinsPage() {
 
     setWatchingAd(networkId);
     
-    setTimeout(async () => {
+    try {
+      // Show real Monetag ad
+      const adCompleted = await showRewardedAd();
+      if (!adCompleted) {
+        toast.error("Ad not completed. Try again.");
+        setWatchingAd(null);
+        return;
+      }
+      
+      // Record on backend (verified by server)
       const success = await recordAdWatch(networkCoins);
       if (success) {
         const newData = { ...networkAdsWatched, [networkId]: networkWatched + 1 };
@@ -174,8 +184,12 @@ export default function CoinsPage() {
         toast.success(`+${networkCoins} coins!`);
         setNetworkCooldowns(prev => ({ ...prev, [networkId]: COOLDOWN_SECONDS }));
       }
+    } catch (err) {
+      console.error('Ad watch error:', err);
+      toast.error("Something went wrong. Try again.");
+    } finally {
       setWatchingAd(null);
-    }, 2500);
+    }
   };
 
   const handleClaimStreak = async () => {

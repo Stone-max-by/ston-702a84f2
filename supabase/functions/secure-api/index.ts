@@ -329,15 +329,30 @@ async function handleRecordAdWatch(userId: string, body: any, tk: string) {
   const user = await fsGet(tk, `users/${userId}`);
   if (!user) return { error: 'User not found' };
 
-  const ar = user.adRewards || { adsWatchedToday: 0, lastWatchDate: '', totalAdsWatched: 0, bonusClaimed: false };
+  const ar = user.adRewards || { adsWatchedToday: 0, lastWatchDate: '', totalAdsWatched: 0, bonusClaimed: false, lastAdTimestamp: '' };
   const today = new Date().toISOString().split('T')[0];
 
   if (ar.lastWatchDate !== today) { ar.adsWatchedToday = 0; ar.bonusClaimed = false; }
-  if (ar.adsWatchedToday >= 10) return { error: 'Daily ad limit reached' };
+  if (ar.adsWatchedToday >= 40) return { error: 'Daily ad limit reached' };
+
+  // Server-side cooldown: minimum 10 seconds between ad rewards
+  if (ar.lastAdTimestamp) {
+    const lastTime = new Date(ar.lastAdTimestamp).getTime();
+    const now = Date.now();
+    if (now - lastTime < 10000) {
+      return { error: 'Too fast. Wait before watching another ad.' };
+    }
+  }
 
   await fsUpdate(tk, `users/${userId}`, {
     coins: (user.coins || 0) + coinsToAdd,
-    adRewards: { adsWatchedToday: ar.adsWatchedToday + 1, totalAdsWatched: (ar.totalAdsWatched || 0) + 1, lastWatchDate: today, bonusClaimed: ar.bonusClaimed },
+    adRewards: { 
+      adsWatchedToday: ar.adsWatchedToday + 1, 
+      totalAdsWatched: (ar.totalAdsWatched || 0) + 1, 
+      lastWatchDate: today, 
+      bonusClaimed: ar.bonusClaimed,
+      lastAdTimestamp: new Date().toISOString(),
+    },
     updatedAt: new Date().toISOString(),
   });
 
