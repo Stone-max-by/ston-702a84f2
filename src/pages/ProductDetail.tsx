@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProducts } from "@/hooks/useProducts";
 import { useUserData } from "@/hooks/useUserData";
-import { useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,155 +27,43 @@ import {
   Clock,
   Play,
   Wallet,
-  ShoppingCart,
   CheckCircle,
   Loader2,
 } from "lucide-react";
-import { productTypeLabels, productTypeIcons, formatFileSize, Product } from "@/types/product";
+import { productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-
-async function sendFileToTelegram(
-  telegramUserId: number,
-  product: Product
-): Promise<boolean> {
-  try {
-    for (const file of product.files) {
-      const response = await supabase.functions.invoke('send-file', {
-        body: {
-          telegramUserId,
-          telegramFileId: file.telegramFileId,
-          fileName: file.name,
-          productTitle: product.title,
-        },
-      });
-
-      if (response.error) {
-        console.error('Error sending file:', response.error);
-        return false;
-      }
-    }
-    return true;
-  } catch (error) {
-    console.error('Failed to send file to Telegram:', error);
-    return false;
-  }
-}
 
 const ProductDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { products, loading } = useProducts();
   const { requireAuth } = useRequireAuth();
-  const { balance, updateBalance, addPurchasedFile, hasFile, userData } = useUserData();
-  const { user } = useAuth();
+  const { balance, hasFile, purchaseProduct } = useUserData();
   const [purchasing, setPurchasing] = useState(false);
-  const [sendingFile, setSendingFile] = useState(false);
 
   const product = products.find((p) => p.slug === slug || p.id === slug);
   const isOwned = product ? hasFile(product.id) : false;
-
-  const sendFileAfterPurchase = async () => {
-    if (!user?.telegramId || !product) {
-      toast({ 
-        title: "Cannot Send File", 
-        description: "Telegram account not linked", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (product.files.length === 0) {
-      toast({ 
-        title: "No Files", 
-        description: "This product has no downloadable files", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    setSendingFile(true);
-    const success = await sendFileToTelegram(user.telegramId, product);
-    setSendingFile(false);
-
-    if (success) {
-      toast({ 
-        title: "File Sent! 📨", 
-        description: "Check your Telegram messages" 
-      });
-    } else {
-      toast({ 
-        title: "Failed to Send", 
-        description: "File purchased but couldn't send to Telegram. Try downloading again.", 
-        variant: "destructive" 
-      });
-    }
-  };
 
   const handleAction = async () => {
     if (!requireAuth("access this product")) return;
     if (!product) return;
     
-    // Already owned - just send file
-    if (isOwned) {
-      toast({
-        title: "Sending...",
-        description: `Sending ${product.title} to Telegram...`,
-      });
-      await sendFileAfterPurchase();
-      return;
-    }
-    
-    // Free product
-    if (product.isFree && !product.unlockByAds) {
-      await addPurchasedFile(product.id);
-      toast({
-        title: "Download Started",
-        description: `Sending ${product.title} to Telegram...`,
-      });
-      await sendFileAfterPurchase();
-      return;
-    }
-    
-    // Unlock by ads
-    if (product.unlockByAds) {
-      toast({
-        title: "Watch Ads Required",
-        description: `Watch ${product.adCreditsRequired} ad(s) to unlock this product`,
-      });
-      return;
-    }
-    
-    // Paid product - purchase with balance
-    const price = product.price || 0;
-    
-    if (balance < price) {
-      toast({
-        title: "Insufficient Balance",
-        description: `You need ₹${price} but only have ₹${balance}. Add more balance to purchase.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
+    setPurchasing(true);
     try {
-      setPurchasing(true);
-      // Deduct balance
-      await updateBalance(balance - price);
-      await addPurchasedFile(product.id);
-      toast({
-        title: "Purchase Successful!",
-        description: `${product.title} is now yours. Sending to Telegram...`,
-      });
-      // Send file to Telegram after successful purchase
-      await sendFileAfterPurchase();
+      const result = await purchaseProduct(product.id);
+      
+      if (result.alreadyOwned) {
+        toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
+      } else if (result.success) {
+        toast({ title: "Purchase Successful!", description: `${product.title} is now yours.` });
+        if (result.fileSent) {
+          toast({ title: "File Sent! 📨", description: "Check your Telegram messages" });
+        }
+      }
     } catch (error) {
-      toast({
-        title: "Purchase Failed",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
+      const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      toast({ title: "Failed", description: message, variant: "destructive" });
     } finally {
       setPurchasing(false);
     }
@@ -184,10 +71,7 @@ const ProductDetail = () => {
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast({
-      title: "Link Copied",
-      description: "Product link copied to clipboard",
-    });
+    toast({ title: "Link Copied", description: "Product link copied to clipboard" });
   };
 
   if (loading) {
@@ -211,22 +95,13 @@ const ProductDetail = () => {
     );
   }
 
-  const screenshots = product.screenshots?.length
-    ? product.screenshots
-    : [product.thumbnail];
+  const screenshots = product.screenshots?.length ? product.screenshots : [product.thumbnail];
 
   return (
     <AppLayout title={product.title}>
       <div className="space-y-6 pb-24">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(-1)}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
 
         {/* Screenshots Carousel */}
@@ -236,28 +111,15 @@ const ProductDetail = () => {
               {screenshots.map((screenshot, index) => (
                 <CarouselItem key={index}>
                   <div className="aspect-video rounded-xl overflow-hidden bg-card">
-                    <img
-                      src={screenshot}
-                      alt={`${product.title} screenshot ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={screenshot} alt={`${product.title} screenshot ${index + 1}`} className="w-full h-full object-cover" />
                   </div>
                 </CarouselItem>
               ))}
             </CarouselContent>
-            {screenshots.length > 1 && (
-              <>
-                <CarouselPrevious className="left-2" />
-                <CarouselNext className="right-2" />
-              </>
-            )}
+            {screenshots.length > 1 && (<><CarouselPrevious className="left-2" /><CarouselNext className="right-2" /></>)}
           </Carousel>
-          
-          {/* Screenshot Count Badge */}
           {screenshots.length > 1 && (
-            <Badge className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm">
-              {screenshots.length} images
-            </Badge>
+            <Badge className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm">{screenshots.length} images</Badge>
           )}
         </div>
 
@@ -265,38 +127,18 @@ const ProductDetail = () => {
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-xl font-bold leading-tight">{product.title}</h1>
-            <Button variant="ghost" size="icon" onClick={handleShare}>
-              <Share2 className="w-5 h-5" />
-            </Button>
+            <Button variant="ghost" size="icon" onClick={handleShare}><Share2 className="w-5 h-5" /></Button>
           </div>
-
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">
-              {productTypeIcons[product.type]} {productTypeLabels[product.type]}
-            </Badge>
+            <Badge variant="secondary">{productTypeIcons[product.type]} {productTypeLabels[product.type]}</Badge>
             <Badge variant="outline">{product.category}</Badge>
-            {product.isNew && (
-              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                NEW
-              </Badge>
-            )}
-            {product.trending && (
-              <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-                🔥 Trending
-              </Badge>
-            )}
+            {product.isNew && <Badge className="bg-green-500/20 text-green-400 border-green-500/30">NEW</Badge>}
+            {product.trending && <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">🔥 Trending</Badge>}
           </div>
-
           {product.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {product.tags.slice(0, 6).map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="outline"
-                  className="text-xs bg-muted/50"
-                >
-                  {tag}
-                </Badge>
+                <Badge key={tag} variant="outline" className="text-xs bg-muted/50">{tag}</Badge>
               ))}
             </div>
           )}
@@ -304,69 +146,34 @@ const ProductDetail = () => {
 
         {/* Stats Row */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Download className="w-4 h-4" />
-            <span>{product.downloads}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Eye className="w-4 h-4" />
-            <span>{product.views}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Heart className="w-4 h-4" />
-            <span>{product.likes}</span>
-          </div>
-          {product.rating && (
-            <div className="flex items-center gap-1.5">
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-              <span>{product.rating.toFixed(1)}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5"><Download className="w-4 h-4" /><span>{product.downloads}</span></div>
+          <div className="flex items-center gap-1.5"><Eye className="w-4 h-4" /><span>{product.views}</span></div>
+          <div className="flex items-center gap-1.5"><Heart className="w-4 h-4" /><span>{product.likes}</span></div>
+          {product.rating && <div className="flex items-center gap-1.5"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span>{product.rating.toFixed(1)}</span></div>}
         </div>
 
         {/* Description */}
         <div className="glass-card p-4 space-y-2">
           <h3 className="font-semibold">About</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {product.description}
-          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
         </div>
 
         {/* File Info */}
         <div className="glass-card p-4 space-y-3">
           <h3 className="font-semibold">File Information</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <HardDrive className="w-4 h-4" />
-              <span>Size: {product.sizeFormatted}</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <FileArchive className="w-4 h-4" />
-              <span>Files: {product.filesCount}</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span>v{product.version}</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="w-4 h-4" />
-              <span>{product.releaseYear}</span>
-            </div>
+            <div className="flex items-center gap-2 text-muted-foreground"><HardDrive className="w-4 h-4" /><span>Size: {product.sizeFormatted}</span></div>
+            <div className="flex items-center gap-2 text-muted-foreground"><FileArchive className="w-4 h-4" /><span>Files: {product.filesCount}</span></div>
+            <div className="flex items-center gap-2 text-muted-foreground"><Clock className="w-4 h-4" /><span>v{product.version}</span></div>
+            <div className="flex items-center gap-2 text-muted-foreground"><Calendar className="w-4 h-4" /><span>{product.releaseYear}</span></div>
           </div>
-
-          {/* Individual Files */}
           {product.files.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-border/50">
               <p className="text-xs text-muted-foreground font-medium">Files:</p>
               {product.files.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between text-xs bg-muted/30 rounded-lg px-3 py-2"
-                >
+                <div key={file.id} className="flex items-center justify-between text-xs bg-muted/30 rounded-lg px-3 py-2">
                   <span className="truncate flex-1">{file.name}</span>
-                  <span className="text-muted-foreground ml-2">
-                    {formatFileSize(file.sizeBytes)}
-                  </span>
+                  <span className="text-muted-foreground ml-2">{formatFileSize(file.sizeBytes)}</span>
                 </div>
               ))}
             </div>
@@ -378,42 +185,22 @@ const ProductDetail = () => {
           <div className="glass-card p-4 space-y-3">
             <h3 className="font-semibold">Compatibility</h3>
             <div className="space-y-2 text-sm">
-              {product.platform?.length && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Monitor className="w-4 h-4" />
-                  <span>Platform: {product.platform.join(", ")}</span>
-                </div>
-              )}
-              {product.language?.length && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Globe className="w-4 h-4" />
-                  <span>Language: {product.language.join(", ")}</span>
-                </div>
-              )}
+              {product.platform?.length && <div className="flex items-center gap-2 text-muted-foreground"><Monitor className="w-4 h-4" /><span>Platform: {product.platform.join(", ")}</span></div>}
+              {product.language?.length && <div className="flex items-center gap-2 text-muted-foreground"><Globe className="w-4 h-4" /><span>Language: {product.language.join(", ")}</span></div>}
             </div>
           </div>
         )}
 
-        {/* Requirements (for games) */}
+        {/* Requirements */}
         {product.requirements && (
           <div className="glass-card p-4 space-y-3">
             <h3 className="font-semibold">System Requirements</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
-              {product.requirements.os && (
-                <p>OS: {product.requirements.os}</p>
-              )}
-              {product.requirements.processor && (
-                <p>Processor: {product.requirements.processor}</p>
-              )}
-              {product.requirements.ram && (
-                <p>RAM: {product.requirements.ram}</p>
-              )}
-              {product.requirements.storage && (
-                <p>Storage: {product.requirements.storage}</p>
-              )}
-              {product.requirements.graphics && (
-                <p>Graphics: {product.requirements.graphics}</p>
-              )}
+              {product.requirements.os && <p>OS: {product.requirements.os}</p>}
+              {product.requirements.processor && <p>Processor: {product.requirements.processor}</p>}
+              {product.requirements.ram && <p>RAM: {product.requirements.ram}</p>}
+              {product.requirements.storage && <p>Storage: {product.requirements.storage}</p>}
+              {product.requirements.graphics && <p>Graphics: {product.requirements.graphics}</p>}
             </div>
           </div>
         )}
@@ -432,48 +219,25 @@ const ProductDetail = () => {
 
         {/* Fixed Action Button */}
         <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-        {isOwned ? (
-            <Button
-              onClick={handleAction}
-              disabled={sendingFile}
-              className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700"
-              size="lg"
-            >
-              {sendingFile ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-              {sendingFile ? "Sending..." : "Download (Owned)"}
+          {isOwned ? (
+            <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700" size="lg">
+              {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+              {purchasing ? "Sending..." : "Download (Owned)"}
             </Button>
           ) : product.isFree && !product.unlockByAds ? (
-            <Button
-              onClick={handleAction}
-              disabled={sendingFile}
-              className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700"
-              size="lg"
-            >
-              {sendingFile ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              {sendingFile ? "Sending..." : "Download Free"}
+            <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2 bg-green-600 hover:bg-green-700" size="lg">
+              {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              {purchasing ? "Sending..." : "Download Free"}
             </Button>
           ) : product.unlockByAds ? (
-            <Button
-              onClick={handleAction}
-              className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700"
-              size="lg"
-            >
+            <Button onClick={handleAction} className="w-full h-12 text-base font-semibold gap-2 bg-amber-600 hover:bg-amber-700" size="lg">
               <Play className="w-5 h-5" />
               Watch {product.adCreditsRequired} Ad{product.adCreditsRequired > 1 ? 's' : ''} to Download
             </Button>
           ) : (
-            <Button
-              onClick={handleAction}
-              disabled={purchasing || sendingFile}
-              className="w-full h-12 text-base font-semibold gap-2"
-              size="lg"
-            >
-              {purchasing || sendingFile ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Wallet className="w-5 h-5" />
-              )}
-              {purchasing ? "Processing..." : sendingFile ? "Sending..." : `Buy for ₹${product.price}`}
+            <Button onClick={handleAction} disabled={purchasing} className="w-full h-12 text-base font-semibold gap-2" size="lg">
+              {purchasing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wallet className="w-5 h-5" />}
+              {purchasing ? "Processing..." : `Buy for ₹${product.price}`}
             </Button>
           )}
         </div>

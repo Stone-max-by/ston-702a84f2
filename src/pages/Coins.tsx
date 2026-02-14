@@ -13,7 +13,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useUserData } from "@/hooks/useUserData";
-import { useRedeemCode } from "@/hooks/useRedeemCodes";
+
 
 // Exchange rate: 10 coins = ₹1
 const COINS_PER_RUPEE = 10;
@@ -58,8 +58,9 @@ export default function CoinsPage() {
     loading,
     balance,
     coins,
-    addBalance,
-    addCoins,
+    convertCoins,
+    claimStreak,
+    redeemCode: secureRedeemCode,
     referral,
     adRewards,
     recordAdWatch,
@@ -87,7 +88,7 @@ export default function CoinsPage() {
   const [streakData, setStreakData] = useState({ currentStreak: 0, lastClaimDate: "", claimedToday: false });
   const [claimingStreak, setClaimingStreak] = useState(false);
   
-  const { redeemCode, redeeming } = useRedeemCode();
+  const redeeming = false; // Managed by secureRedeemCode now
 
   // Load streak data from localStorage
   useEffect(() => {
@@ -166,9 +167,8 @@ export default function CoinsPage() {
     setWatchingAd(networkId);
     
     setTimeout(async () => {
-      const success = await recordAdWatch();
+      const success = await recordAdWatch(networkCoins);
       if (success) {
-        await addCoins(networkCoins);
         const newData = { ...networkAdsWatched, [networkId]: networkWatched + 1 };
         saveAdsWatched(newData);
         toast.success(`+${networkCoins} coins!`);
@@ -188,7 +188,7 @@ export default function CoinsPage() {
     const streakDay = Math.min(newStreak, 7);
     const reward = STREAK_REWARDS[streakDay - 1].coins;
     
-    await addCoins(reward);
+    await claimStreak(reward);
     
     const newData = {
       currentStreak: newStreak > 7 ? 1 : newStreak,
@@ -206,9 +206,8 @@ export default function CoinsPage() {
     if (!canClaimBonus) return;
     
     setClaimingBonus(true);
-    const success = await claimDailyBonus();
+    const success = await claimDailyBonus(dailyBonusAmount);
     if (success) {
-      await addCoins(dailyBonusAmount);
       toast.success(`+${dailyBonusAmount} bonus!`);
     }
     setClaimingBonus(false);
@@ -233,17 +232,8 @@ export default function CoinsPage() {
 
     setConverting(true);
     try {
+      await convertCoins(coinsToConvert);
       const addedBalance = coinsToConvert / COINS_PER_RUPEE;
-      await addCoins(-coinsToConvert);
-      await addBalance(addedBalance);
-      
-      await addTransaction({
-        type: "coin_earning",
-        amount: addedBalance,
-        description: `Converted ${coinsToConvert} coins`,
-        status: "completed",
-      });
-      
       toast.success(`₹${addedBalance} added!`);
       setCoinsToConvert(MIN_COINS_TO_CONVERT);
     } catch {
@@ -263,13 +253,14 @@ export default function CoinsPage() {
     if (!requireAuth('redeem a code')) return;
     if (!user?.id) return;
 
-    await redeemCode(redeemCodeInput, user.id, async (rewardType, amount) => {
-      if (rewardType === 'coins') {
-        await addCoins(amount);
-      } else {
-        await addBalance(amount);
+    try {
+      const result = await secureRedeemCode(redeemCodeInput);
+      if (result.success) {
+        toast.success(`+${result.rewardAmount} ${result.rewardType === 'coins' ? 'coins' : '₹'} added!`);
       }
-    });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to redeem');
+    }
     setRedeemCodeInput("");
   };
 

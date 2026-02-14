@@ -4,8 +4,9 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, query, collection, where, getDocs, increment } from "firebase/firestore";
 import { UserData, AdRewardsData, ReferralData, UserApiKey, UserActivePlan } from "@/types/user";
 import { getTelegramStartParam } from "@/lib/telegram";
+import { secureApiCall } from "@/lib/secureApi";
 
-// Helper to generate API key (pr-live- + 24 characters = 32 total)
+// Helper to generate API key (for initial user creation only)
 const generateApiKey = (): string => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const randomPart = Array.from({ length: 24 }, () =>
@@ -95,7 +96,7 @@ export function useUserData() {
               setUserData({ ...data, purchasedFiles: data.purchasedFiles || [] });
             }
           } else {
-            // Create new user
+            // Create new user (initial creation only - this is fine client-side)
             const referralCode = generateReferralCode(user.telegramId!);
             const startParam = getTelegramStartParam();
             let referredBy: string | undefined;
@@ -116,7 +117,6 @@ export function useUserData() {
               }
             }
 
-            // Generate API key for new user
             const rawKey = generateApiKey();
             const keyHash = await hashKey(rawKey);
             const keyPrefix = rawKey.slice(0, 8);
@@ -176,148 +176,70 @@ export function useUserData() {
     return () => unsubscribe();
   }, [user, getUserDocId]);
 
-  const updateBalance = useCallback(async (newBalance: number) => {
-    const docId = getUserDocId();
-    if (!docId) return;
-    await updateDoc(doc(db, "users", docId), {
-      balance: newBalance,
-      updatedAt: new Date().toISOString(),
-    });
-  }, [getUserDocId]);
+  // ===== SECURE API WRITE OPERATIONS =====
+  // All writes go through the backend edge function
 
-  const addBalance = useCallback(async (amount: number) => {
-    if (!userData) return;
-    await updateBalance(userData.balance + amount);
-  }, [userData, updateBalance]);
+  const purchaseProduct = useCallback(async (productId: string) => {
+    return secureApiCall('purchase-product', { productId });
+  }, []);
 
-  const updateCoins = useCallback(async (newCoins: number) => {
-    const docId = getUserDocId();
-    if (!docId) return;
-    await updateDoc(doc(db, "users", docId), {
-      coins: newCoins,
-      updatedAt: new Date().toISOString(),
-    });
-  }, [getUserDocId]);
+  const purchaseBot = useCallback(async (botId: string, botName: string, botPrice: number, webhookUrl?: string) => {
+    return secureApiCall('purchase-bot', { botId, botName, botPrice, webhookUrl });
+  }, []);
 
-  const addCoins = useCallback(async (amount: number) => {
-    if (!userData) return;
-    await updateCoins(userData.coins + amount);
-  }, [userData, updateCoins]);
+  const convertCoins = useCallback(async (coinsAmount: number) => {
+    return secureApiCall('convert-coins', { coinsAmount });
+  }, []);
 
-  const updateApiCredits = useCallback(async (newCredits: number) => {
-    const docId = getUserDocId();
-    if (!docId) return;
-    await updateDoc(doc(db, "users", docId), {
-      apiCredits: newCredits,
-      updatedAt: new Date().toISOString(),
-    });
-  }, [getUserDocId]);
-
-  const useApiCredit = useCallback(async (): Promise<boolean> => {
-    if (!userData || userData.apiCredits <= 0) return false;
-    await updateApiCredits(userData.apiCredits - 1);
-    return true;
-  }, [userData, updateApiCredits]);
-
-  const revokeApiKey = useCallback(async () => {
-    const docId = getUserDocId();
-    if (!docId || !userData?.apiKey) return;
-    await updateDoc(doc(db, "users", docId), {
-      "apiKey.isActive": false,
-      updatedAt: new Date().toISOString(),
-    });
-  }, [getUserDocId, userData]);
-
-  const regenerateApiKey = useCallback(async (): Promise<string | null> => {
-    const docId = getUserDocId();
-    if (!docId) return null;
-
-    const rawKey = generateApiKey();
-    const keyHash = await hashKey(rawKey);
-    const keyPrefix = rawKey.slice(0, 8);
-
-    const apiKey: UserApiKey = {
-      key: rawKey,
-      keyPrefix,
-      keyHash,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    await updateDoc(doc(db, "users", docId), {
-      apiKey,
-      updatedAt: new Date().toISOString(),
-    });
-
-    setNewApiKey(rawKey);
-    return rawKey;
-  }, [getUserDocId]);
-
-  const purchasePlan = useCallback(async (plan: { id: string; name: string; credits: number; validityDays: number }) => {
-    const docId = getUserDocId();
-    if (!docId) return;
-
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + plan.validityDays);
-
-    const activePlan: UserActivePlan = {
-      planId: plan.id,
-      planName: plan.name,
-      purchaseDate: new Date().toISOString(),
-      expiryDate: expiryDate.toISOString(),
-      totalCredits: plan.credits,
-    };
-
-    await updateDoc(doc(db, "users", docId), {
-      activePlan,
-      apiCredits: plan.credits, // Set to the new plan's credits (not additive)
-      updatedAt: new Date().toISOString(),
-    });
-  }, [getUserDocId]);
-
-  const updateAdRewards = useCallback(async (adRewards: Partial<AdRewardsData>) => {
-    const docId = getUserDocId();
-    if (!docId || !userData) return;
-    const updatedAdRewards = { ...userData.adRewards, ...adRewards };
-    await updateDoc(doc(db, "users", docId), {
-      adRewards: updatedAdRewards,
-      updatedAt: new Date().toISOString(),
-    });
-  }, [getUserDocId, userData]);
-
-  const recordAdWatch = useCallback(async (): Promise<boolean> => {
-    if (!userData) return false;
-    const maxAdsPerDay = 10;
-    if (userData.adRewards.adsWatchedToday >= maxAdsPerDay) return false;
-    const today = new Date().toISOString().split("T")[0];
-    await updateAdRewards({
-      adsWatchedToday: userData.adRewards.adsWatchedToday + 1,
-      totalAdsWatched: userData.adRewards.totalAdsWatched + 1,
-      lastWatchDate: today,
-    });
-    return true;
-  }, [userData, updateAdRewards]);
-
-  const claimDailyBonus = useCallback(async (): Promise<boolean> => {
-    if (!userData) return false;
-    const maxAdsPerDay = 10;
-    if (userData.adRewards.bonusClaimed || userData.adRewards.adsWatchedToday < maxAdsPerDay) {
+  const recordAdWatch = useCallback(async (coinsToAdd: number = 5): Promise<boolean> => {
+    try {
+      await secureApiCall('record-ad-watch', { coinsToAdd });
+      return true;
+    } catch {
       return false;
     }
-    await updateAdRewards({ bonusClaimed: true });
-    return true;
-  }, [userData, updateAdRewards]);
+  }, []);
 
-  const addPurchasedFile = useCallback(async (fileId: string) => {
-    const docId = getUserDocId();
-    if (!docId || !userData) return;
-    if (userData.purchasedFiles?.includes(fileId)) return;
-    const updatedFiles = [...(userData.purchasedFiles || []), fileId];
-    await updateDoc(doc(db, "users", docId), {
-      purchasedFiles: updatedFiles,
-      updatedAt: new Date().toISOString(),
+  const claimDailyBonus = useCallback(async (bonusAmount: number = 10): Promise<boolean> => {
+    try {
+      await secureApiCall('claim-daily-bonus', { bonusAmount });
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const claimStreak = useCallback(async (coinsReward: number) => {
+    return secureApiCall('claim-streak', { coinsReward });
+  }, []);
+
+  const redeemCode = useCallback(async (code: string) => {
+    return secureApiCall('redeem-code', { code });
+  }, []);
+
+  const revokeApiKey = useCallback(async () => {
+    return secureApiCall('revoke-api-key');
+  }, []);
+
+  const regenerateApiKey = useCallback(async (): Promise<string | null> => {
+    try {
+      const result = await secureApiCall<{ apiKey: string }>('regenerate-api-key');
+      setNewApiKey(result.apiKey);
+      return result.apiKey;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const purchasePlan = useCallback(async (plan: { id: string; name: string; credits: number; validityDays: number; price?: number }) => {
+    return secureApiCall('purchase-api-plan', {
+      planId: plan.id,
+      planName: plan.name,
+      credits: plan.credits,
+      validityDays: plan.validityDays,
+      price: plan.price || 0,
     });
-  }, [getUserDocId, userData]);
+  }, []);
 
   const hasFile = useCallback((fileId: string): boolean => {
     return userData?.purchasedFiles?.includes(fileId) ?? false;
@@ -335,33 +257,32 @@ export function useUserData() {
     clearNewApiKey,
     
     balance: userData?.balance ?? 0,
-    updateBalance,
-    addBalance,
-    
     coins: userData?.coins ?? 0,
-    updateCoins,
-    addCoins,
     
     apiCredits: userData?.apiCredits ?? 0,
     apiKey: userData?.apiKey ?? null,
     activePlan: userData?.activePlan ?? null,
-    updateApiCredits,
-    useApiCredit,
+    
+    purchasedFiles: userData?.purchasedFiles ?? [],
+    hasFile,
+    
+    adRewards: userData?.adRewards ?? DEFAULT_AD_REWARDS,
+    referral: userData?.referral ?? DEFAULT_REFERRAL,
+    
+    // Secure write operations (all go through backend)
+    purchaseProduct,
+    purchaseBot,
+    convertCoins,
+    recordAdWatch,
+    claimDailyBonus,
+    claimStreak,
+    redeemCode,
     revokeApiKey,
     regenerateApiKey,
     purchasePlan,
     
-    purchasedFiles: userData?.purchasedFiles ?? [],
-    addPurchasedFile,
-    hasFile,
-    
-    adRewards: userData?.adRewards ?? DEFAULT_AD_REWARDS,
-    recordAdWatch,
-    claimDailyBonus,
-    
-    referral: userData?.referral ?? DEFAULT_REFERRAL,
+    // Constants
     referralBonusCoins: 50,
-    
     maxAdsPerDay: 10,
     coinsPerAd: 5,
     dailyBonusAmount: 10,
