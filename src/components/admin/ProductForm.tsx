@@ -194,21 +194,23 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
 
   const { activeCategories: dynamicProductCategories } = useCategories("product");
   
-  // Merge hardcoded product types + dynamic categories as product types
-  const allProductTypes: { key: string; label: string; icon: string }[] = [
-    ...Object.entries(productTypeLabels).map(([key, label]) => ({
+  // Merge hardcoded product types + dynamic categories (deduplicate by key)
+  const allProductTypes: { key: string; label: string; icon: string }[] = (() => {
+    const hardcoded = Object.entries(productTypeLabels).map(([key, label]) => ({
       key,
       label,
       icon: productTypeIcons[key as ProductType] || "📦",
-    })),
-    ...dynamicProductCategories
-      .filter(cat => !Object.keys(productTypeLabels).includes(cat.name.toLowerCase().replace(/\s+/g, "_")))
+    }));
+    const hardcodedKeys = new Set(hardcoded.map(t => t.key));
+    const dynamic = dynamicProductCategories
       .map(cat => ({
         key: cat.name.toLowerCase().replace(/\s+/g, "_"),
         label: cat.name,
         icon: cat.icon,
-      })),
-  ];
+      }))
+      .filter(cat => !hardcodedKeys.has(cat.key));
+    return [...hardcoded, ...dynamic];
+  })();
 
   const currentCategories = defaultCategories[formData.type as ProductType] || [];
 
