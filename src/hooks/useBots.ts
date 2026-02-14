@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { TelegramBot } from '@/types/bot';
-import { dummyBots } from '@/data/dummyBots';
 
 export function useBots() {
   const [bots, setBots] = useState<TelegramBot[]>([]);
@@ -19,18 +18,14 @@ export function useBots() {
         const firestoreBots = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date()
+          createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt || 0)
         })) as TelegramBot[];
         
-        const activeBots = firestoreBots.filter(bot => bot.isActive);
-        
-        // Merge Firestore bots with dummy bots (Firestore first, then dummies that don't conflict)
-        const firestoreIds = new Set(activeBots.map(b => b.id));
-        const uniqueDummies = dummyBots.filter(d => !firestoreIds.has(d.id));
-        setBots([...activeBots, ...uniqueDummies]);
+        setBots(firestoreBots.filter(bot => bot.isActive));
       } catch (err) {
         console.error('Error fetching bots:', err);
-        setBots(dummyBots);
+        setError('Failed to load bots');
+        setBots([]);
       } finally {
         setLoading(false);
       }
@@ -55,14 +50,6 @@ export function useBot(botId: string | undefined) {
 
     const fetchBot = async () => {
       try {
-        // Check dummy bots first
-        const dummyBot = dummyBots.find(b => b.id === botId);
-        if (dummyBot) {
-          setBot(dummyBot);
-          setLoading(false);
-          return;
-        }
-
         const botRef = doc(db, 'telegram_bots', botId);
         const snapshot = await getDoc(botRef);
         
