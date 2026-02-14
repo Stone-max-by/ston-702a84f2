@@ -183,8 +183,8 @@ export function useUserData() {
     return secureApiCall('purchase-product', { productId });
   }, []);
 
-  const purchaseBot = useCallback(async (botId: string, botName: string, botPrice: number, webhookUrl?: string) => {
-    return secureApiCall('purchase-bot', { botId, botName, botPrice, webhookUrl });
+  const purchaseBot = useCallback(async (botId: string) => {
+    return secureApiCall('purchase-bot', { botId });
   }, []);
 
   const convertCoins = useCallback(async (coinsAmount: number) => {

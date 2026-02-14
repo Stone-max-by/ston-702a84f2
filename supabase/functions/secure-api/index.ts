@@ -262,8 +262,17 @@ async function handlePurchaseProduct(userId: string, tgId: number, body: any, tk
 }
 
 async function handlePurchaseBot(userId: string, tgId: number, displayName: string, body: any, tk: string) {
-  const { botId, botName, botPrice, webhookUrl } = body;
-  if (!botId || !botName || botPrice === undefined) return { error: 'Missing bot details' };
+  const { botId } = body;
+  if (!botId) return { error: 'botId required' };
+
+  // Fetch bot details from database — never trust client data
+  const bot = await fsGet(tk, `telegram_bots/${botId}`);
+  if (!bot) return { error: 'Bot not found' };
+  if (!bot.isActive) return { error: 'Bot is no longer available' };
+
+  const botName = bot.name;
+  const botPrice = bot.price || 0;
+  const webhookUrl = bot.webhookUrl;
 
   const user = await fsGet(tk, `users/${userId}`);
   if (!user) return { error: 'User not found' };
@@ -297,7 +306,7 @@ async function handlePurchaseBot(userId: string, tgId: number, displayName: stri
     } catch (e) { console.error('Webhook failed:', e); }
   }
 
-  return { success: true, newBalance: (user.balance || 0) - botPrice };
+  return { success: true, newBalance: (user.balance || 0) - botPrice, botName };
 }
 
 async function handleConvertCoins(userId: string, body: any, tk: string) {
