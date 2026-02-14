@@ -586,6 +586,42 @@ async function handleWatchAdForProduct(userId: string, tgId: number, body: any, 
   };
 }
 
+async function handleVerifyDeposit(userId: string, body: any, tk: string) {
+  const { amount, orderId } = body;
+  if (!amount || amount < 10) return { error: 'Invalid amount (min ₹10)' };
+  if (!orderId) return { error: 'Order ID required' };
+
+  const user = await fsGet(tk, `users/${userId}`);
+  if (!user) return { error: 'User not found' };
+
+  // TODO: In production, verify payment with payment gateway API using orderId
+  // For now, this is a demo — always succeed
+  const verified = true; // Replace with actual gateway verification
+
+  if (!verified) {
+    await fsCreate(tk, 'transactions', {
+      userId, type: 'deposit', amount,
+      description: `Deposit ₹${amount} (failed)`,
+      date: new Date().toISOString(), status: 'failed', orderId,
+    });
+    return { success: false, status: 'failed', message: 'Payment verification failed. Please try again or contact support.' };
+  }
+
+  const newBalance = (user.balance || 0) + amount;
+  await fsUpdate(tk, `users/${userId}`, {
+    balance: newBalance,
+    updatedAt: new Date().toISOString(),
+  });
+
+  await fsCreate(tk, 'transactions', {
+    userId, type: 'deposit', amount,
+    description: `Deposit ₹${amount}`,
+    date: new Date().toISOString(), status: 'completed', orderId,
+  });
+
+  return { success: true, status: 'completed', newBalance, message: `₹${amount} added to your wallet!` };
+}
+
 // ========== MAIN HANDLER ==========
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -625,6 +661,7 @@ Deno.serve(async (req) => {
       case 'regenerate-api-key': result = await handleRegenerateApiKey(userId, tk); break;
       case 'revoke-api-key': result = await handleRevokeApiKey(userId, tk); break;
       case 'purchase-api-plan': result = await handlePurchaseApiPlan(userId, body, tk); break;
+      case 'verify-deposit': result = await handleVerifyDeposit(userId, body, tk); break;
       default: result = { error: `Unknown action: ${action}` };
     }
 
