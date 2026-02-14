@@ -39,25 +39,28 @@ export default function AdminProducts() {
   const { activeCategories: dynamicProductCategories } = useCategories("product");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [visibleCount, setVisibleCount] = useState(10);
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Merge hardcoded types + dynamic categories
-  const allProductTypes: { key: string; label: string; icon: string }[] = [
-    ...Object.entries(productTypeLabels).map(([key, label]) => ({
+  // Merge hardcoded types + dynamic categories (deduplicate by key)
+  const allProductTypes: { key: string; label: string; icon: string }[] = (() => {
+    const hardcoded = Object.entries(productTypeLabels).map(([key, label]) => ({
       key,
       label,
       icon: productTypeIcons[key as ProductType] || "📦",
-    })),
-    ...dynamicProductCategories
-      .filter(cat => !Object.keys(productTypeLabels).includes(cat.name.toLowerCase().replace(/\s+/g, "_")))
+    }));
+    const hardcodedKeys = new Set(hardcoded.map(t => t.key));
+    const dynamic = dynamicProductCategories
       .map(cat => ({
         key: cat.name.toLowerCase().replace(/\s+/g, "_"),
         label: cat.name,
         icon: cat.icon,
-      })),
-  ];
+      }))
+      .filter(cat => !hardcodedKeys.has(cat.key));
+    return [...hardcoded, ...dynamic];
+  })();
 
   const filteredProducts = products.filter((p) => {
     const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase());
@@ -191,7 +194,7 @@ export default function AdminProducts() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredProducts.map((product) => (
+            {filteredProducts.slice(0, visibleCount).map((product) => (
               <TableRow key={product.id} className="border-white/5">
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -280,6 +283,19 @@ export default function AdminProducts() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Load More */}
+      {visibleCount < filteredProducts.length && (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => setVisibleCount(prev => prev + 10)}
+            className="w-full max-w-xs"
+          >
+            Load More ({filteredProducts.length - visibleCount} remaining)
+          </Button>
+        </div>
+      )}
 
       {filteredProducts.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">

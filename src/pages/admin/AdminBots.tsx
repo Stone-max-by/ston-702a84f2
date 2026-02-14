@@ -48,6 +48,7 @@ export default function AdminBots() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBot, setEditingBot] = useState<TelegramBot | null>(null);
   const [formData, setFormData] = useState<BotFormData>(emptyFormData);
@@ -345,79 +346,93 @@ export default function AdminBots() {
           <p className="text-sm text-muted-foreground/70">Add your first bot to get started</p>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Bot</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Sales</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredBots.map((bot) => (
-                <TableRow key={bot.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={bot.image}
-                        alt={bot.name}
-                        className="w-10 h-10 rounded-lg object-cover"
-                      />
-                      <div>
-                        <p className="font-medium">{bot.name}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {bot.shortDescription}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{bot.category}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <span className="font-medium">₹{bot.price}</span>
-                      {bot.originalPrice && (
-                        <span className="text-xs text-muted-foreground line-through ml-1">
-                          ₹{bot.originalPrice}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{bot.totalSales}</TableCell>
-                  <TableCell>
-                    <Badge variant={bot.isActive ? "default" : "secondary"}>
-                      {bot.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(bot)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(bot)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <>
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bot</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Sales</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {filteredBots.slice(0, visibleCount).map((bot) => (
+                  <TableRow key={bot.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={bot.image}
+                          alt={bot.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <div>
+                          <p className="font-medium">{bot.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {bot.shortDescription}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{bot.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <span className="font-medium">₹{bot.price}</span>
+                        {bot.originalPrice && (
+                          <span className="text-xs text-muted-foreground line-through ml-1">
+                            ₹{bot.originalPrice}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{bot.totalSales}</TableCell>
+                    <TableCell>
+                      <Badge variant={bot.isActive ? "default" : "secondary"}>
+                        {bot.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(bot)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(bot)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {visibleCount < filteredBots.length && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount(prev => prev + 10)}
+                className="w-full max-w-xs"
+              >
+                Load More ({filteredBots.length - visibleCount} remaining)
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
