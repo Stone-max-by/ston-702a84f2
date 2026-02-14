@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Check, IndianRupee, QrCode, Sparkles, Wallet } from "lucide-react";
+import { ArrowRight, Check, IndianRupee, Sparkles, Wallet, Copy } from "lucide-react";
 import { useUserData } from "@/hooks/useUserData";
 import { useUserApiCredits } from "@/contexts/UserApiCreditsContext";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { toast } from "sonner";
 import { secureApiCall } from "@/lib/secureApi";
+import { QRCodeSVG } from "qrcode.react";
 
 const PRESET_AMOUNTS = [
   { amount: 50, label: "₹50", popular: false },
@@ -16,6 +17,21 @@ const PRESET_AMOUNTS = [
   { amount: 200, label: "₹200", popular: false },
   { amount: 500, label: "₹500", popular: false },
 ];
+
+const generateOrderId = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < 10; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+  return `order_qr${result}`;
+};
+
+const buildUpiLink = (amount: number) => {
+  const payee = "paytmqr5mt0x0@ptys";
+  const payeeName = "Paytm";
+  const note = "Payment for PRGujju";
+  const orderId = generateOrderId();
+  return `upi://pay?pa=${payee}&am=${amount}&pn=${payeeName}&cu=INR&tn=${encodeURIComponent(note)}&tr=${orderId}`;
+};
 
 export default function Deposit() {
   const navigate = useNavigate();
@@ -88,10 +104,15 @@ export default function Deposit() {
         {step === "qr" && (
           <div className="space-y-6 pt-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-1"><p className="text-sm text-muted-foreground">Amount to pay</p><p className="text-4xl font-bold text-foreground">₹{getFinalAmount()}</p></div>
-            <div className="flex justify-center"><div className="bg-white p-6 rounded-3xl shadow-2xl shadow-black/20"><div className="w-52 h-52 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center relative overflow-hidden"><QrCode className="h-36 w-36 text-gray-800" /></div></div></div>
+            <div className="flex justify-center">
+              <div className="bg-white p-6 rounded-3xl shadow-2xl shadow-black/20">
+                <QRCodeSVG value={buildUpiLink(getFinalAmount())} size={208} level="H" />
+              </div>
+            </div>
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">UPI ID</span><span className="text-sm font-medium text-foreground">payments@yourupi</span></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Name</span><span className="text-sm font-medium text-foreground">Your Business</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">UPI ID</span><div className="flex items-center gap-2"><span className="text-sm font-medium text-foreground">paytmqr5mt0x0@ptys</span><button onClick={() => { navigator.clipboard.writeText("paytmqr5mt0x0@ptys"); toast.success("UPI ID copied!"); }}><Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" /></button></div></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Name</span><span className="text-sm font-medium text-foreground">Paytm</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Amount</span><span className="text-sm font-medium text-foreground">₹{getFinalAmount()}</span></div>
             </div>
             <div className="bg-muted/50 rounded-xl p-4"><p className="text-sm text-muted-foreground text-center">Scan the QR code using any UPI app like GPay, PhonePe, or Paytm</p></div>
             <Button className="w-full h-14 text-lg font-semibold rounded-xl bg-green-600 hover:bg-green-500 shadow-lg shadow-green-600/30" onClick={handlePaymentReceived}><Check className="mr-2 h-5 w-5" />I've Completed Payment</Button>
