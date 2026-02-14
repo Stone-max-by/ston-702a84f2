@@ -15,7 +15,8 @@ import {
   Ticket,
   X,
   ShoppingBag,
-  Megaphone
+  Megaphone,
+  Tags
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +28,7 @@ const navItems = [
   { to: "/admin/products", icon: Package, label: "Products" },
   { to: "/admin/bots", icon: Bot, label: "Bots" },
   { to: "/admin/bot-purchases", icon: ShoppingBag, label: "Bot Sales" },
+  { to: "/admin/categories", icon: Tags, label: "Categories" },
   { to: "/admin/promotions", icon: Megaphone, label: "Promotions" },
   { to: "/admin/users", icon: Users, label: "Users" },
   { to: "/admin/api", icon: Code, label: "API" },
