@@ -16,21 +16,20 @@ export function useBots() {
         const q = query(botsRef, orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
         
-        if (snapshot.empty) {
-          // Use dummy bots if no bots in Firebase
-          setBots(dummyBots);
-        } else {
-          const botsData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date()
-          })) as TelegramBot[];
-          
-          setBots(botsData.filter(bot => bot.isActive));
-        }
+        const firestoreBots = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date()
+        })) as TelegramBot[];
+        
+        const activeBots = firestoreBots.filter(bot => bot.isActive);
+        
+        // Merge Firestore bots with dummy bots (Firestore first, then dummies that don't conflict)
+        const firestoreIds = new Set(activeBots.map(b => b.id));
+        const uniqueDummies = dummyBots.filter(d => !firestoreIds.has(d.id));
+        setBots([...activeBots, ...uniqueDummies]);
       } catch (err) {
         console.error('Error fetching bots:', err);
-        // Fallback to dummy bots on error
         setBots(dummyBots);
       } finally {
         setLoading(false);
@@ -56,6 +55,14 @@ export function useBot(botId: string | undefined) {
 
     const fetchBot = async () => {
       try {
+        // Check dummy bots first
+        const dummyBot = dummyBots.find(b => b.id === botId);
+        if (dummyBot) {
+          setBot(dummyBot);
+          setLoading(false);
+          return;
+        }
+
         const botRef = doc(db, 'telegram_bots', botId);
         const snapshot = await getDoc(botRef);
         
