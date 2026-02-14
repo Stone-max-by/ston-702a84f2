@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProducts } from "@/hooks/useProducts";
 import { Product, ProductType, productTypeLabels, productTypeIcons, formatFileSize } from "@/types/product";
+import { useCategories } from "@/hooks/useCategories";
 import { ProductForm } from "@/components/admin/ProductForm";
 import {
   Table,
@@ -35,11 +36,28 @@ import { Badge } from "@/components/ui/badge";
 
 export default function AdminProducts() {
   const { products, loading, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { activeCategories: dynamicProductCategories } = useCategories("product");
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<ProductType | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Merge hardcoded types + dynamic categories
+  const allProductTypes: { key: string; label: string; icon: string }[] = [
+    ...Object.entries(productTypeLabels).map(([key, label]) => ({
+      key,
+      label,
+      icon: productTypeIcons[key as ProductType] || "📦",
+    })),
+    ...dynamicProductCategories
+      .filter(cat => !Object.keys(productTypeLabels).includes(cat.name.toLowerCase().replace(/\s+/g, "_")))
+      .map(cat => ({
+        key: cat.name.toLowerCase().replace(/\s+/g, "_"),
+        label: cat.name,
+        icon: cat.icon,
+      })),
+  ];
 
   const filteredProducts = products.filter((p) => {
     const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase());
@@ -89,16 +107,10 @@ export default function AdminProducts() {
     }
   };
 
-  const productCounts = {
-    all: products.length,
-    game: products.filter(p => p.type === "game").length,
-    code: products.filter(p => p.type === "code").length,
-    pixellab_plp: products.filter(p => p.type === "pixellab_plp").length,
-    capcut_template: products.filter(p => p.type === "capcut_template").length,
-    font: products.filter(p => p.type === "font").length,
-    preset: products.filter(p => p.type === "preset").length,
-    other: products.filter(p => p.type === "other").length,
-  };
+  const productCounts: Record<string, number> = { all: products.length };
+  allProductTypes.forEach(({ key }) => {
+    productCounts[key] = products.filter(p => p.type === key).length;
+  });
 
   if (loading) {
     return (
@@ -125,14 +137,14 @@ export default function AdminProducts() {
 
       {/* Type Stats */}
       <div className="flex flex-wrap gap-2">
-        {(Object.keys(productTypeLabels) as ProductType[]).map((type) => (
+        {allProductTypes.map(({ key, label, icon }) => (
           <Badge
-            key={type}
-            variant={typeFilter === type ? "default" : "secondary"}
+            key={key}
+            variant={typeFilter === key ? "default" : "secondary"}
             className="cursor-pointer"
-            onClick={() => setTypeFilter(typeFilter === type ? "all" : type)}
+            onClick={() => setTypeFilter(typeFilter === key ? "all" : key)}
           >
-            {productTypeIcons[type]} {productTypeLabels[type]} ({productCounts[type]})
+            {icon} {label} ({productCounts[key] || 0})
           </Badge>
         ))}
       </div>
@@ -148,16 +160,16 @@ export default function AdminProducts() {
             className="pl-10 bg-card border-white/10"
           />
         </div>
-        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as ProductType | "all")}>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v)}>
           <SelectTrigger className="w-full sm:w-48 bg-card border-white/10">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            {(Object.keys(productTypeLabels) as ProductType[]).map((type) => (
-              <SelectItem key={type} value={type}>
-                {productTypeIcons[type]} {productTypeLabels[type]}
+            {allProductTypes.map(({ key, label, icon }) => (
+              <SelectItem key={key} value={key}>
+                {icon} {label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -198,7 +210,7 @@ export default function AdminProducts() {
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-xs">
-                    {productTypeIcons[product.type]} {productTypeLabels[product.type]}
+                    {(allProductTypes.find(t => t.key === product.type)?.icon || "📦")} {allProductTypes.find(t => t.key === product.type)?.label || product.type}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">

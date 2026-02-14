@@ -22,7 +22,23 @@ export default function Explore() {
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { products, loading } = useProducts();
-  const { activeCategories: productCategories } = useCategories("product");
+  const { activeCategories: dynamicProductCategories } = useCategories("product");
+
+  // Merge hardcoded types + dynamic categories
+  const allProductTypes = [
+    ...Object.entries(productTypeLabels).map(([key, label]) => ({
+      key,
+      label,
+      icon: productTypeIcons[key as ProductType] || "📦",
+    })),
+    ...dynamicProductCategories
+      .filter(cat => !Object.keys(productTypeLabels).includes(cat.name.toLowerCase().replace(/\s+/g, "_")))
+      .map(cat => ({
+        key: cat.name.toLowerCase().replace(/\s+/g, "_"),
+        label: cat.name,
+        icon: cat.icon,
+      })),
+  ];
 
   // Reset visible count when category or search changes
   const handleCategoryChange = (category: string) => {
@@ -43,19 +59,19 @@ export default function Explore() {
   // Count products by category (using dynamic categories)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: visibleProducts.length };
-    productCategories.forEach(cat => { counts[cat.name.toLowerCase()] = 0; });
+    allProductTypes.forEach(({ key }) => { counts[key] = 0; });
     visibleProducts.forEach((product) => {
-      const key = (product.type || product.category || "").toLowerCase();
-      if (counts[key] !== undefined) counts[key]++;
+      const typeKey = (product.type || "").toLowerCase();
+      if (counts[typeKey] !== undefined) counts[typeKey]++;
     });
     return counts;
-  }, [visibleProducts, productCategories]);
+  }, [visibleProducts, allProductTypes]);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
     let filtered = selectedCategory === "all" 
       ? visibleProducts 
-      : visibleProducts.filter(p => p.type.toLowerCase() === selectedCategory || p.category?.toLowerCase() === selectedCategory);
+      : visibleProducts.filter(p => p.type?.toLowerCase() === selectedCategory);
     
     if (search.trim()) {
       filtered = filtered.filter((product) =>
@@ -88,7 +104,7 @@ export default function Explore() {
   }, [selectedCategory, visibleProducts, search, sortBy]);
 
   // Use dynamic categories
-  const availableCategories = productCategories.filter(cat => (categoryCounts[cat.name.toLowerCase()] || 0) > 0);
+  const availableTypes = allProductTypes.filter(({ key }) => (categoryCounts[key] || 0) > 0);
 
   if (loading) {
     return (
@@ -130,20 +146,20 @@ export default function Explore() {
             <span className="opacity-70">({categoryCounts.all})</span>
           </button>
           
-          {availableCategories.map((cat) => (
+          {availableTypes.map(({ key, label, icon }) => (
             <button
-              key={cat.id}
-              onClick={() => handleCategoryChange(cat.name.toLowerCase())}
+              key={key}
+              onClick={() => handleCategoryChange(key)}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                selectedCategory === cat.name.toLowerCase()
+                selectedCategory === key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted/50 text-muted-foreground hover:bg-muted"
               )}
             >
-              <span>{cat.icon}</span>
-              <span>{cat.name}</span>
-              <span className="opacity-70">({categoryCounts[cat.name.toLowerCase()] || 0})</span>
+              <span>{icon}</span>
+              <span>{label}</span>
+              <span className="opacity-70">({categoryCounts[key] || 0})</span>
             </button>
           ))}
         </div>

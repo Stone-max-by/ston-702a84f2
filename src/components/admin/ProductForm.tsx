@@ -24,10 +24,12 @@ import {
   ProductType,
   ProductFile,
   productTypeLabels,
+  productTypeIcons,
   defaultCategories,
   formatFileSize,
   generateSlug,
 } from "@/types/product";
+import { useCategories } from "@/hooks/useCategories";
 import { ImageUpload, MultiImageUpload } from "./ImageUpload";
 import { TelegramFetchButton } from "./TelegramFetchButton";
 
@@ -190,6 +192,24 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
     }
   };
 
+  const { activeCategories: dynamicProductCategories } = useCategories("product");
+  
+  // Merge hardcoded product types + dynamic categories as product types
+  const allProductTypes: { key: string; label: string; icon: string }[] = [
+    ...Object.entries(productTypeLabels).map(([key, label]) => ({
+      key,
+      label,
+      icon: productTypeIcons[key as ProductType] || "📦",
+    })),
+    ...dynamicProductCategories
+      .filter(cat => !Object.keys(productTypeLabels).includes(cat.name.toLowerCase().replace(/\s+/g, "_")))
+      .map(cat => ({
+        key: cat.name.toLowerCase().replace(/\s+/g, "_"),
+        label: cat.name,
+        icon: cat.icon,
+      })),
+  ];
+
   const currentCategories = defaultCategories[formData.type as ProductType] || [];
 
   return (
@@ -228,9 +248,9 @@ export function ProductForm({ open, onClose, onSubmit, initialData, mode }: Prod
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(productTypeLabels).map(([key, label]) => (
+                    {allProductTypes.map(({ key, label, icon }) => (
                       <SelectItem key={key} value={key}>
-                        {label}
+                        {icon} {label}
                       </SelectItem>
                     ))}
                   </SelectContent>
