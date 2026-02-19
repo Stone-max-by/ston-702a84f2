@@ -38,7 +38,7 @@ const navItems = [
   { to: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 
-function NavContent({ onItemClick }: { onItemClick?: () => void }) {
+function NavContent({ onItemClick, onLogout }: { onItemClick?: () => void; onLogout?: () => void }) {
   const location = useLocation();
 
   return (
@@ -80,7 +80,7 @@ function NavContent({ onItemClick }: { onItemClick?: () => void }) {
         })}
       </nav>
 
-      <div className="p-2 border-t border-border/50">
+      <div className="p-2 border-t border-border/50 space-y-0.5">
         <NavLink
           to="/"
           onClick={onItemClick}
@@ -89,6 +89,15 @@ function NavContent({ onItemClick }: { onItemClick?: () => void }) {
           <ArrowLeft className="w-4 h-4" />
           Back to App
         </NavLink>
+        {onLogout && (
+          <button
+            onClick={() => { onLogout(); onItemClick?.(); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Logout
+          </button>
+        )}
       </div>
     </div>
   );
@@ -116,7 +125,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-56 bg-card border-r border-border/50 flex-col shrink-0">
-        <NavContent />
+        <NavContent onLogout={adminLogout} />
       </aside>
 
       {/* Mobile + Content */}
@@ -140,7 +149,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-64 p-0 bg-card border-border/50">
-                <NavContent onItemClick={() => setMobileOpen(false)} />
+                <NavContent onItemClick={() => setMobileOpen(false)} onLogout={adminLogout} />
               </SheetContent>
             </Sheet>
           </div>
