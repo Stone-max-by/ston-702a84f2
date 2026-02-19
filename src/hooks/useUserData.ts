@@ -110,6 +110,7 @@ export function useUserData() {
               if (!referrerSnapshot.empty) {
                 const referrerDoc = referrerSnapshot.docs[0];
                 referredBy = referrerDoc.id;
+                // Increment referral count — bonus is awarded via channel verification flow
                 await updateDoc(doc(db, "users", referredBy), {
                   "referral.referralCount": increment(1),
                   updatedAt: new Date().toISOString(),
