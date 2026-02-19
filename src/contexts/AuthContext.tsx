@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       attempts += 1;
 
       const telegramCheck = isTelegramWebApp();
-      console.log('Auth: Telegram check result:', telegramCheck);
+      
 
       if (telegramCheck) {
         setIsTelegram(true);
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Initialize Telegram WebApp and auto-login
         initTelegramWebApp();
         const telegramUser = getTelegramUser();
-        console.log('Auth: Telegram user:', telegramUser);
+        
 
         if (telegramUser) {
           const authUser: AuthUser = {
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             telegramId: telegramUser.id,
             username: telegramUser.username,
           };
-          console.log('Auth: Setting Telegram user:', authUser);
+          
           setUser(authUser);
           setLoading(false);
           return true;
