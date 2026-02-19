@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import ProductDetail from "./pages/ProductDetail";
 import BotMarketplace from "./pages/BotMarketplace";
 import { AdminLayout } from "./components/admin/AdminLayout";
+import { AdminAuthProvider } from "./contexts/AdminAuthContext";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminBots from "./pages/admin/AdminBots";
@@ -51,18 +52,18 @@ const App = () => (
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/auth" element={<Auth />} />
               {/* Admin Routes */}
-              <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-              <Route path="/admin/products" element={<AdminLayout><AdminProducts /></AdminLayout>} />
-              <Route path="/admin/bots" element={<AdminLayout><AdminBots /></AdminLayout>} />
-              <Route path="/admin/bot-purchases" element={<AdminLayout><AdminBotPurchases /></AdminLayout>} />
-              <Route path="/admin/promotions" element={<AdminLayout><AdminPromotions /></AdminLayout>} />
-              <Route path="/admin/categories" element={<AdminLayout><AdminCategories /></AdminLayout>} />
-              <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
-              <Route path="/admin/api" element={<AdminLayout><AdminApiEndpoints /></AdminLayout>} />
-              <Route path="/admin/api-keys" element={<AdminLayout><AdminApiKeys /></AdminLayout>} />
-              <Route path="/admin/redeem-codes" element={<AdminLayout><AdminRedeemCodes /></AdminLayout>} />
-              <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
-              
+              <Route path="/admin" element={<AdminAuthProvider><AdminLayout><AdminDashboard /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/products" element={<AdminAuthProvider><AdminLayout><AdminProducts /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/bots" element={<AdminAuthProvider><AdminLayout><AdminBots /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/bot-purchases" element={<AdminAuthProvider><AdminLayout><AdminBotPurchases /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/promotions" element={<AdminAuthProvider><AdminLayout><AdminPromotions /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/categories" element={<AdminAuthProvider><AdminLayout><AdminCategories /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/users" element={<AdminAuthProvider><AdminLayout><AdminUsers /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/api" element={<AdminAuthProvider><AdminLayout><AdminApiEndpoints /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/api-keys" element={<AdminAuthProvider><AdminLayout><AdminApiKeys /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/redeem-codes" element={<AdminAuthProvider><AdminLayout><AdminRedeemCodes /></AdminLayout></AdminAuthProvider>} />
+              <Route path="/admin/settings" element={<AdminAuthProvider><AdminLayout><AdminSettings /></AdminLayout></AdminAuthProvider>} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.monetag-callback]
 verify_jwt = false
+
+[functions.admin-auth]
+verify_jwt = false
