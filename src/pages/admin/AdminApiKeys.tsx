@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
+import { supabase } from "@/integrations/supabase/client";
 import { Key, Activity, Zap, Search, Ban, Check, Settings2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,21 @@ import { UserData } from "@/types/user";
 
 interface UserWithApiKey extends UserData {
   docId: string;
+}
+
+const ADMIN_TOKEN_KEY = 'admin_session_token';
+
+async function adminAction(action: string, params: Record<string, any>) {
+  const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  if (!token) throw new Error('Not authenticated');
+  
+  const { data, error } = await supabase.functions.invoke('admin-auth', {
+    body: { action, token, ...params },
+  });
+  
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
 }
 
 export default function AdminApiKeys() {
@@ -52,10 +68,7 @@ export default function AdminApiKeys() {
   const handleToggleStatus = async (user: UserWithApiKey) => {
     try {
       const newStatus = !user.apiKey?.isActive;
-      await updateDoc(doc(db, "users", user.docId), {
-        "apiKey.isActive": newStatus,
-        updatedAt: new Date().toISOString(),
-      });
+      await adminAction('toggle-api-key', { userId: user.docId, newStatus });
       toast.success(newStatus ? "Key enabled" : "Key disabled");
     } catch (error) {
       toast.error("Failed to update status");
@@ -65,10 +78,7 @@ export default function AdminApiKeys() {
   const handleUpdateCredits = async () => {
     if (!editingUser) return;
     try {
-      await updateDoc(doc(db, "users", editingUser.docId), {
-        apiCredits: newCredits,
-        updatedAt: new Date().toISOString(),
-      });
+      await adminAction('update-credits', { userId: editingUser.docId, credits: newCredits });
       setEditingUser(null);
       toast.success("Credits updated");
     } catch (error) {

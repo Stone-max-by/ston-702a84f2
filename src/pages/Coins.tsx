@@ -27,9 +27,9 @@ const STREAK_REWARDS = [
   { day: 1, coins: 5 },
   { day: 2, coins: 10 },
   { day: 3, coins: 15 },
-  { day: 4, coins: 20 },
-  { day: 5, coins: 30 },
-  { day: 6, coins: 40 },
+  { day: 4, coins: 25 },
+  { day: 5, coins: 40 },
+  { day: 6, coins: 60 },
   { day: 7, coins: 100 },
 ];
 
@@ -191,22 +191,26 @@ export default function CoinsPage() {
     if (streakData.claimedToday) return;
     
     setClaimingStreak(true);
-    const today = getTodayKey();
-    const newStreak = streakData.currentStreak + 1;
-    const streakDay = Math.min(newStreak, 7);
-    const reward = STREAK_REWARDS[streakDay - 1].coins;
-    
-    await claimStreak(reward);
-    
-    const newData = {
-      currentStreak: newStreak > 7 ? 1 : newStreak,
-      lastClaimDate: today,
-      claimedToday: true,
-    };
-    localStorage.setItem('streakData', JSON.stringify(newData));
-    setStreakData(newData);
-    
-    toast.success(`+${reward} streak coins! Day ${streakDay}`);
+    try {
+      const result = await claimStreak(0); // Server calculates reward
+      const today = getTodayKey();
+      
+      // Use server response for streak data
+      const serverDay = result?.day || (streakData.currentStreak + 1);
+      const serverReward = result?.reward || STREAK_REWARDS[Math.min(serverDay - 1, 6)].coins;
+      
+      const newData = {
+        currentStreak: serverDay >= 7 ? 1 : serverDay,
+        lastClaimDate: today,
+        claimedToday: true,
+      };
+      localStorage.setItem('streakData', JSON.stringify(newData));
+      setStreakData(newData);
+      
+      toast.success(`+${serverReward} streak coins! Day ${serverDay}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to claim streak');
+    }
     setClaimingStreak(false);
   };
 

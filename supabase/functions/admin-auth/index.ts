@@ -41,6 +41,20 @@ async function getFirestoreAccessToken(): Promise<string> {
   return tokenData.access_token;
 }
 
+function toFV(val: any): any {
+  if (val === null || val === undefined) return { nullValue: null };
+  if (typeof val === 'string') return { stringValue: val };
+  if (typeof val === 'number') return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
+  if (typeof val === 'boolean') return { booleanValue: val };
+  if (Array.isArray(val)) return { arrayValue: { values: val.map(toFV) } };
+  if (typeof val === 'object') {
+    const fields: any = {};
+    for (const [k, v] of Object.entries(val)) fields[k] = toFV(v);
+    return { mapValue: { fields } };
+  }
+  return { stringValue: String(val) };
+}
+
 function fromFV(val: any): any {
   if (!val) return null;
   if ('stringValue' in val) return val.stringValue;
@@ -54,6 +68,22 @@ function fromFV(val: any): any {
     return r;
   }
   return null;
+}
+
+async function fsUpdate(token: string, path: string, fields: Record<string, any>): Promise<void> {
+  const body: any = { fields: {} };
+  const masks: string[] = [];
+  for (const [key, value] of Object.entries(fields)) {
+    masks.push(key);
+    body.fields[key] = toFV(value);
+  }
+  const mask = masks.map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&');
+  const res = await fetch(`${FIRESTORE_BASE}/${path}?${mask}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Firestore UPDATE failed: ${res.status}`);
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -146,6 +176,54 @@ Deno.serve(async (req) => {
       }
       const result = await verifySessionToken(token);
       return new Response(JSON.stringify(result), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ===== ADMIN DATA ACTIONS (require valid session) =====
+    const { token } = body;
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Admin session required' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const session = await verifySessionToken(token);
+    if (!session.valid) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired session' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const tk = await getFirestoreAccessToken();
+
+    if (action === 'toggle-api-key') {
+      const { userId, newStatus } = body;
+      if (!userId || typeof newStatus !== 'boolean') {
+        return new Response(JSON.stringify({ error: 'userId and newStatus required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      await fsUpdate(tk, `users/${userId}`, {
+        'apiKey.isActive': newStatus,
+        updatedAt: new Date().toISOString(),
+      });
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'update-credits') {
+      const { userId, credits } = body;
+      if (!userId || typeof credits !== 'number') {
+        return new Response(JSON.stringify({ error: 'userId and credits required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      await fsUpdate(tk, `users/${userId}`, {
+        apiCredits: credits,
+        updatedAt: new Date().toISOString(),
+      });
+      return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
