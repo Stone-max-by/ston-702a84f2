@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useAdminAuthContext } from "@/contexts/AdminAuthContext";
 import { AdminNotificationBell } from "./AdminNotificationBell";
+import AdminLogin from "@/pages/admin/AdminLogin";
 
 const navItems = [
   { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
@@ -95,35 +96,21 @@ function NavContent({ onItemClick }: { onItemClick?: () => void }) {
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { isAdmin, loading, user } = useAdminAuth();
+  const { isAdminAuthenticated, adminLoading, adminLogout } = useAdminAuthContext();
 
-  if (!loading && user?.telegramId && !isAdmin) {
+  if (adminLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-            <ShieldAlert className="w-8 h-8 text-destructive" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground">Access Denied</h1>
-          <p className="text-sm text-muted-foreground">
-            You don't have admin privileges.
-          </p>
-          <p className="text-xs text-muted-foreground font-mono bg-muted px-3 py-1.5 rounded">
-            ID: {user.telegramId}
-          </p>
-          <Button asChild variant="outline" size="sm">
-            <NavLink to="/">Go Home</NavLink>
-          </Button>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
 
-  const content = loading ? (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-    </div>
-  ) : children;
+  if (!isAdminAuthenticated) {
+    return <AdminLogin />;
+  }
+
+  const content = children;
 
   return (
     <div className="min-h-screen bg-background flex">
