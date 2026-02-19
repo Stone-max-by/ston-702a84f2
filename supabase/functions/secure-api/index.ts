@@ -387,18 +387,33 @@ async function handleClaimDailyBonus(userId: string, body: any, tk: string) {
 }
 
 async function handleClaimStreak(userId: string, body: any, tk: string) {
-  const { coinsReward } = body;
-  if (!coinsReward || coinsReward < 0 || coinsReward > 100) return { error: 'Invalid reward' };
-
   const user = await fsGet(tk, `users/${userId}`);
   if (!user) return { error: 'User not found' };
 
+  // Server-side streak calculation — ignore client-sent coinsReward
+  const STREAK_REWARDS = [5, 10, 15, 25, 40, 60, 100]; // Day 1-7
+  const streak = user.streak || { currentDay: 0, lastClaimDate: '', claimedToday: false };
+  const today = new Date().toISOString().split('T')[0];
+
+  if (streak.lastClaimDate === today) return { error: 'Already claimed today' };
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  let newDay: number;
+  if (streak.lastClaimDate === yesterday) {
+    newDay = Math.min((streak.currentDay || 0) + 1, 7);
+  } else {
+    newDay = 1; // streak broken, reset
+  }
+
+  const coinsReward = STREAK_REWARDS[newDay - 1] || 5;
+
   await fsUpdate(tk, `users/${userId}`, {
     coins: (user.coins || 0) + coinsReward,
+    streak: { currentDay: newDay, lastClaimDate: today, claimedToday: true },
     updatedAt: new Date().toISOString(),
   });
 
-  return { success: true, newCoins: (user.coins || 0) + coinsReward };
+  return { success: true, newCoins: (user.coins || 0) + coinsReward, day: newDay, reward: coinsReward };
 }
 
 async function handleRedeemCode(userId: string, body: any, tk: string) {

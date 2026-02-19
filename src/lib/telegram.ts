@@ -77,23 +77,17 @@ export const isTelegramWebApp = (): boolean => {
   const hasUser = webApp.initDataUnsafe?.user?.id !== undefined;
   const hasInitData = webApp.initData !== undefined && webApp.initData !== '';
   
-  console.log('Telegram WebApp check:', { hasUser, hasInitData, user: webApp.initDataUnsafe?.user });
-  
   return hasUser || hasInitData;
 };
 
 export const getTelegramUser = () => {
   if (typeof window === 'undefined') return null;
-  const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
-  console.log('Getting Telegram user:', user);
-  return user || null;
+  return window.Telegram?.WebApp?.initDataUnsafe?.user || null;
 };
 
 export const getTelegramStartParam = (): string | null => {
   if (typeof window === 'undefined') return null;
-  const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-  console.log('Telegram start_param (referral code):', startParam);
-  return startParam || null;
+  return window.Telegram?.WebApp?.initDataUnsafe?.start_param || null;
 };
 
 export const getTelegramWebApp = () => {
@@ -104,7 +98,7 @@ export const getTelegramWebApp = () => {
 export const initTelegramWebApp = () => {
   const webApp = getTelegramWebApp();
   if (webApp) {
-    console.log('Initializing Telegram WebApp');
+    
     webApp.ready();
     webApp.expand();
     
